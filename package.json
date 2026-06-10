@@ -1,6 +1,6 @@
 {
   "name": "tethershot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Menu-bar app that screenshots your iPhone (USB + Wi-Fi) straight into a folder you choose. Native Swift + AVFoundation + pymobiledevice3.",
   "bin": {
     "tethershot": "bin/tethershot.js"

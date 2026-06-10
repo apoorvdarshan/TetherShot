@@ -2,29 +2,27 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key>
-    <string>TetherShot</string>
-    <key>CFBundleDisplayName</key>
-    <string>TetherShot</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.apoorvdarshan.tethershot</string>
-    <key>CFBundleVersion</key>
-    <string>1.0.0</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
-    <key>CFBundleExecutable</key>
-    <string>TetherShot</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
-    <!-- Menu-bar agent: no Dock icon, no main window. -->
-    <key>LSUIElement</key>
-    <true/>
-    <!-- Required: the USB iPhone screen is exposed through the Camera (AVFoundation) TCC bucket. -->
-    <key>NSCameraUsageDescription</key>
-    <string>TetherShot needs camera access to capture the screen of your USB-connected iPhone.</string>
-    <key>NSHumanReadableCopyright</key>
-    <string>© 2026 Apoorv Darshan. MIT Licensed.</string>
+	<key>CFBundleDisplayName</key>
+	<string>TetherShot</string>
+	<key>CFBundleExecutable</key>
+	<string>TetherShot</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.apoorvdarshan.tethershot</string>
+	<key>CFBundleName</key>
+	<string>TetherShot</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.1</string>
+	<key>CFBundleVersion</key>
+	<string>1.0.0</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>TetherShot needs camera access to capture the screen of your USB-connected iPhone.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 Apoorv Darshan. MIT Licensed.</string>
 </dict>
 </plist>
