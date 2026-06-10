@@ -6,10 +6,10 @@
    ============================================================ */
 
 :root {
-  --paper:   #0C0B12;
-  --paper-2: #1E1C2A;
-  --card:    #181722;
-  --band:    #121022;
+  --paper:   #070709;
+  --paper-2: #1A1A1F;
+  --card:    #121216;
+  --band:    #0D0D11;
   --ink:     #ECEAF6;
   --ink-2:   #ACAAC3;
   --ink-3:   #6E6C86;
@@ -37,9 +37,8 @@
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body {
   font-family: var(--sans);
-  background: radial-gradient(120% 80% at 80% -10%, #15132a 0%, transparent 55%),
-              radial-gradient(110% 70% at 0% 0%, #0e1430 0%, transparent 50%),
-              linear-gradient(170deg, #0C0B12 0%, #09080F 60%, #0B0913 100%);
+  background: radial-gradient(120% 80% at 84% -12%, rgba(40,72,128,.14) 0%, transparent 50%),
+              linear-gradient(180deg, #08090B 0%, #070709 55%, #050507 100%);
   background-attachment: fixed;
   color: var(--ink);
   line-height: 1.6;
@@ -50,10 +49,10 @@ body {
 
 /* Texture: faint grain + subtle accent blooms ------------------------- */
 .aurora { position: fixed; inset: 0; z-index: -3; overflow: hidden; pointer-events: none; }
-.aurora span { position: absolute; border-radius: 50%; filter: blur(120px); opacity: .3; mix-blend-mode: screen; }
-.aurora .a1 { width: 52vw; height: 52vw; top: -16vw; right: -8vw; background: var(--accent); opacity: .32; }
-.aurora .a2 { width: 46vw; height: 46vw; bottom: -18vw; left: -10vw; background: var(--accent-2); opacity: .26; }
-.aurora .a3 { display: block; width: 40vw; height: 40vw; top: 42vw; left: 38vw; background: var(--cyan); opacity: .16; }
+.aurora span { position: absolute; border-radius: 50%; filter: blur(130px); opacity: .12; mix-blend-mode: screen; }
+.aurora .a1 { width: 46vw; height: 46vw; top: -18vw; right: -10vw; background: var(--cyan); opacity: .12; }
+.aurora .a2 { width: 42vw; height: 42vw; bottom: -20vw; left: -12vw; background: #2f5bff; opacity: .09; }
+.aurora .a3 { display: none; }
 body::after {
   content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none; opacity: .05;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
@@ -235,7 +234,7 @@ details p { color: var(--ink-2); padding: 0 0 24px; font-size: 1rem; max-width: 
 details code, .prose code, .frow code { font-family: var(--mono); font-size: .85em; background: rgba(36,54,255,.1); color: var(--accent); padding: 2px 7px; border-radius: 4px; }
 
 /* CTA ----------------------------------------------------------------- */
-.cta-band { text-align: center; border: 1px solid var(--line-2); border-radius: var(--r-lg); padding: 84px 30px; position: relative; overflow: hidden; background: radial-gradient(130% 150% at 50% 0%, rgba(110,123,255,.12), transparent 60%); }
+.cta-band { text-align: center; border: 1px solid var(--line-2); border-radius: var(--r-lg); padding: 84px 30px; position: relative; overflow: hidden; background: radial-gradient(130% 150% at 50% 0%, rgba(60,231,255,.08), transparent 60%); }
 .cta-band .aperture { color: var(--accent); margin-bottom: 22px; }
 .cta-band h2 { font-size: clamp(2.2rem,5vw,3.8rem); margin-bottom: 16px; letter-spacing: -.03em; }
 .cta-band p { color: var(--ink-2); margin-bottom: 32px; }
