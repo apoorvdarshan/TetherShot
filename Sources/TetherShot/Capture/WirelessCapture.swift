@@ -64,7 +64,11 @@ final class WirelessCapture: CaptureBackend {
         let names = await deviceNames()
         var devices: [CaptureDevice] = []
         for (udid, interfaces) in tunnels where !interfaces.isEmpty {
-            let hasUSB = interfaces.contains { $0.uppercased().contains("USB") }
+            // A USB tunnel interface ends in "-USB" (e.g. "usbmux-<udid>-USB").
+            // Match the suffix, NOT a bare "usb" substring — otherwise the Wi-Fi
+            // interface "usbmux-<udid>-Network" (which contains "usb" inside
+            // "usbmux") would be wrongly treated as USB and hidden.
+            let hasUSB = interfaces.contains { $0.uppercased().hasSuffix("-USB") }
             if hasUSB { continue }                       // USB → AVFoundation handles it
             let name = names[udid] ?? nameCache[udid] ?? "iPhone …\(udid.suffix(5))"
             devices.append(CaptureDevice(id: udid, name: name, connection: .wireless))
