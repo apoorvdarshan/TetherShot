@@ -1,10 +1,28 @@
-# TetherShot
+<div align="center">
 
-A tiny macOS **menu-bar app that screenshots your iPhone** and drops the PNGs into a folder you choose.
+<img src="https://raw.githubusercontent.com/apoorvdarshan/TetherShot/main/Resources/AppIcon.png" width="168" alt="TetherShot logo" />
 
-Click the menu-bar icon → pick your phone → a pixel-perfect screenshot lands in your designated folder, timestamped. No QuickTime dance, no fiddling.
+<h1>TetherShot</h1>
 
-> **Status: Phase 1 (USB) + Phase 2 (Wi-Fi) — working.** Capture a tethered iPhone instantly over USB, or cable-free over Wi-Fi after a one-time setup. See the roadmap.
+<strong>Screenshot your iPhone, straight from the Mac menu bar.</strong>
+
+<p>USB or Wi-Fi · pixel-perfect captures · saved to a folder you choose · copied to your clipboard.</p>
+
+<p>
+  <img src="https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white" alt="macOS 14+" />
+  <img src="https://img.shields.io/badge/Swift-6.0-FA7343?logo=swift&logoColor=white" alt="Swift 6" />
+  <img src="https://img.shields.io/badge/UI-SwiftUI-1575F9?logo=swift&logoColor=white" alt="SwiftUI" />
+  <img src="https://img.shields.io/badge/iPhone-USB%20%2B%20Wi--Fi-5856D6?logo=apple&logoColor=white" alt="iPhone USB + Wi-Fi" />
+  <img src="https://img.shields.io/npm/v/tethershot?logo=npm&label=npm&color=CB3837" alt="npm version" />
+  <img src="https://img.shields.io/github/stars/apoorvdarshan/TetherShot?logo=github&color=FFCA28" alt="GitHub stars" />
+  <img src="https://img.shields.io/badge/license-MIT-3DA639" alt="MIT License" />
+</p>
+
+<p><code>npm install -g tethershot</code></p>
+
+</div>
+
+> **Status: USB + Wi-Fi capture, clipboard, global hotkey, npm install & in-app updates — all working.** Capture a tethered iPhone instantly over USB, or cable-free over Wi-Fi after a one-time setup. See the roadmap.
 
 ---
 
