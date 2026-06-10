@@ -6,16 +6,36 @@
 <title>TetherShot — Screenshot your iPhone from the Mac menu bar</title>
 <meta name="description" content="TetherShot is a macOS menu-bar app that captures pixel-perfect iPhone screenshots over USB or Wi-Fi, straight into a folder you choose and onto your clipboard. Install with npm." />
 <link rel="icon" type="image/png" href="assets/favicon.png" />
-<meta property="og:title" content="TetherShot — iPhone screenshots from your Mac menu bar" />
-<meta property="og:description" content="Pixel-perfect iPhone screenshots over USB or Wi-Fi. Native Swift. Install with npm." />
-<meta property="og:image" content="assets/logo.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Archivo:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="canonical" href="https://tethershot.apoorvdarshan.com/" />
+<meta name="author" content="Apoorv Darshan" />
+<meta name="robots" content="index, follow" />
+<meta name="theme-color" content="#ECEAE0" />
+<meta name="application-name" content="TetherShot" />
+<meta name="keywords" content="TetherShot, iPhone screenshot, screenshot iPhone from Mac, macOS menu bar app, USB iPhone screenshot, wireless iPhone screenshot, pymobiledevice3, AVFoundation, iOS screenshot tool" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="TetherShot" />
+<meta property="og:url" content="https://tethershot.apoorvdarshan.com/" />
+<meta property="og:title" content="TetherShot — Screenshot your iPhone from the Mac menu bar" />
+<meta property="og:description" content="TetherShot is a macOS menu-bar app that captures pixel-perfect iPhone screenshots over USB or Wi-Fi, straight into a folder you choose and onto your clipboard. Install with npm." />
+<meta property="og:image" content="https://tethershot.apoorvdarshan.com/assets/logo.png" />
+<meta property="og:image:width" content="1024" />
+<meta property="og:image:height" content="1024" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@apoorvdarshan" />
+<meta name="twitter:creator" content="@apoorvdarshan" />
+<meta name="twitter:title" content="TetherShot — Screenshot your iPhone from the Mac menu bar" />
+<meta name="twitter:description" content="TetherShot is a macOS menu-bar app that captures pixel-perfect iPhone screenshots over USB or Wi-Fi, straight into a folder you choose and onto your clipboard. Install with npm." />
+<meta name="twitter:image" content="https://tethershot.apoorvdarshan.com/assets/logo.png" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"TetherShot","operatingSystem":"macOS 14+","applicationCategory":"DeveloperApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"A macOS menu-bar app that captures pixel-perfect iPhone screenshots over USB or Wi-Fi into a folder you choose and your clipboard.","url":"https://tethershot.apoorvdarshan.com/","downloadUrl":"https://www.npmjs.com/package/tethershot","softwareVersion":"1.0.3","license":"https://github.com/apoorvdarshan/TetherShot/blob/main/LICENSE","image":"https://tethershot.apoorvdarshan.com/assets/logo.png","author":{"@type":"Person","name":"Apoorv Darshan","url":"https://x.com/apoorvdarshan"}}
+</script>
 <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
-<div class="aurora"><span class="a1"></span><span class="a2"></span></div>
+<div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
 
 <!-- NAV -->
 <nav class="nav">
@@ -30,6 +50,11 @@
       <a href="terms.html">Terms</a>
     </div>
     <div class="nav-cta">
+      <div class="nav-social">
+        <a href="https://x.com/apoorvdarshan" target="_blank" rel="noopener" aria-label="Follow @apoorvdarshan on X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231Zm-1.16 17.52h1.832L7.084 4.126H5.117l11.967 15.644Z"/></svg></a>
+        <a class="kofi" href="https://ko-fi.com/apoorvdarshan" target="_blank" rel="noopener" aria-label="Support on Ko-fi"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h13a1 1 0 0 1 1 1h1.5a3.5 3.5 0 0 1 0 7H18a6 6 0 0 1-6 5H9a6 6 0 0 1-6-6V6a1 1 0 0 1 1-1Zm14 3v3h1.5a1.5 1.5 0 0 0 0-3H18Z"/></svg></a>
+      </div>
+      
       <a class="btn btn-ghost" href="https://github.com/apoorvdarshan/TetherShot" target="_blank" rel="noopener">GitHub</a>
       <a class="btn btn-primary" href="#install">Install</a>
       <button class="nav-toggle" data-nav-toggle aria-label="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
@@ -117,7 +142,7 @@
 </section>
 
 <!-- MODES -->
-<section id="modes">
+<section id="modes" class="band">
   <div class="container">
     <div class="section-head reveal">
       <p class="eyebrow">Capture modes</p>
@@ -164,7 +189,7 @@
 </section>
 
 <!-- INSTALL -->
-<section id="install">
+<section id="install" class="band">
   <div class="container">
     <div class="section-head reveal">
       <p class="eyebrow">Install</p>
@@ -276,5 +301,8 @@ pymobiledevice3 lockdown \
 </footer>
 
 <script src="assets/app.js"></script>
+<script defer src="/_vercel/insights/script.js"></script>
+<script defer src="/_vercel/speed-insights/script.js"></script>
+
 </body>
 </html>

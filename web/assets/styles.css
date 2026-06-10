@@ -6,9 +6,10 @@
    ============================================================ */
 
 :root {
-  --paper:   #F2F0E8;
-  --paper-2: #EAE8DE;
+  --paper:   #EAE7DC;
+  --paper-2: #E2DFF0;
   --card:    #FBFAF6;
+  --band:    #E4E2F1;
   --ink:     #14131A;
   --ink-2:   #46444F;
   --ink-3:   #8E8B97;
@@ -36,7 +37,8 @@
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body {
   font-family: var(--sans);
-  background: var(--paper);
+  background: linear-gradient(168deg, #EEECE2 0%, #E6E4D6 42%, #E1DFEE 100%);
+  background-attachment: fixed;
   color: var(--ink);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -46,10 +48,10 @@ body {
 
 /* Texture: faint grain + subtle accent blooms ------------------------- */
 .aurora { position: fixed; inset: 0; z-index: -3; overflow: hidden; pointer-events: none; }
-.aurora span { position: absolute; border-radius: 50%; filter: blur(120px); opacity: .14; }
-.aurora .a1 { width: 46vw; height: 46vw; top: -16vw; right: -10vw; background: var(--accent); }
-.aurora .a2 { width: 40vw; height: 40vw; bottom: -18vw; left: -12vw; background: var(--accent-2); opacity: .1; }
-.aurora .a3 { display: none; }
+.aurora span { position: absolute; border-radius: 50%; filter: blur(110px); opacity: .22; }
+.aurora .a1 { width: 54vw; height: 54vw; top: -14vw; right: -8vw; background: var(--accent); opacity: .24; }
+.aurora .a2 { width: 48vw; height: 48vw; bottom: -16vw; left: -10vw; background: var(--accent-2); opacity: .2; }
+.aurora .a3 { display: block; width: 40vw; height: 40vw; top: 40vw; left: 36vw; background: var(--cyan); opacity: .12; }
 body::after {
   content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none; opacity: .5;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
@@ -105,6 +107,17 @@ h1,h2,h3,h4 { font-family: var(--display); font-weight: 600; line-height: 1.03; 
 .social a:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .social a.kofi:hover { background: #FF5E5B; border-color: #FF5E5B; color: #fff; }
 .social svg { width: 15px; height: 15px; }
+
+/* Nav social icons (top) */
+.nav-social { display: flex; gap: 6px; }
+.nav-social a { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 999px; border: 1px solid var(--line-2); color: var(--ink-2); transition: all .2s; }
+.nav-social a:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.nav-social a.kofi:hover { background: #FF5E5B; border-color: #FF5E5B; color: #fff; }
+.nav-social svg { width: 15px; height: 15px; }
+@media (max-width: 760px) { .nav-social { display: none; } }
+
+/* Tinted section bands break up the page */
+.band { background: var(--band); }
 
 /* Hero ---------------------------------------------------------------- */
 .hero { position: relative; padding: 64px 0 40px; }
