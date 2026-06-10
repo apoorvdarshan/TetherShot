@@ -4,7 +4,7 @@ A tiny macOS **menu-bar app that screenshots your iPhone** and drops the PNGs in
 
 Click the menu-bar icon → pick your phone → a pixel-perfect screenshot lands in your designated folder, timestamped. No QuickTime dance, no fiddling.
 
-> **Status: Phase 1 (USB) — working.** Plug an iPhone in over USB, trust the Mac, and capture. Wireless (Wi-Fi) capture is the next phase — see the roadmap.
+> **Status: Phase 1 (USB) + Phase 2 (Wi-Fi) — working.** Capture a tethered iPhone instantly over USB, or cable-free over Wi-Fi after a one-time setup. See the roadmap.
 
 ---
 
@@ -40,13 +40,28 @@ Screenshots default to `~/Pictures/TetherShot`; change it any time with **Choose
 
 Capture backends sit behind a `CaptureBackend` protocol, so the wireless backend slots in without touching the UI.
 
+## Wireless (Wi-Fi) setup — one time
+
+Wi-Fi capture uses Apple's developer services via [`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3) over a RemoteXPC tunnel. A small root LaunchDaemon (`tunneld`) keeps the tunnel alive so captures need no sudo.
+
+```bash
+pip3 install -U pymobiledevice3           # the engine
+./scripts/install-tunneld.sh               # installs the tunnel daemon (asks for admin password once)
+```
+
+Then, with the iPhone connected by USB once:
+- Enable **Developer Mode** (Settings ▸ Privacy & Security ▸ Developer Mode) — TetherShot needs it on.
+- Enable Wi-Fi reachability: `pymobiledevice3 lockdown wifi-connections --state on`
+
+After that you can unplug. As long as the iPhone and Mac are on the same Wi-Fi, the menu shows it as **(Wi-Fi)** and captures are pixel-perfect — `tunneld` discovers it automatically. Remove the daemon any time with `./scripts/uninstall-tunneld.sh`.
+
 ## Roadmap
 
 - **Phase 1 — USB capture** ✅ native AVFoundation, pixel-perfect, zero setup beyond Trust.
-- **Phase 2 — Wireless (Wi-Fi)** — drive [`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3) over a RemoteXPC Wi-Fi tunnel (`developer dvt screenshot`). Needs a one-time USB pairing, Developer Mode, and a privileged tunnel helper. Cable-free and pixel-perfect once set up.
-- **Phase 3 — Polish** — capture sound/notification, global hotkey, launch-at-login, per-device subfolders.
+- **Phase 2 — Wireless (Wi-Fi)** ✅ `pymobiledevice3` + a root `tunneld` LaunchDaemon; `developer dvt screenshot` over the Wi-Fi tunnel. Cable-free and pixel-perfect.
+- **Phase 3 — Polish** — capture notification, global hotkey, launch-at-login, per-device subfolders.
 
-> **Note on wireless:** the "let the iPhone AirPlay-mirror to the Mac and screenshot that window" trick is intentionally **not** used — on macOS Tahoe the mirrored window blacks out whenever a capture context is active. Phase 2 uses the developer-services path instead, which captures the device's own framebuffer regardless of transport.
+> **Note on wireless:** the "let the iPhone AirPlay-mirror to the Mac and screenshot that window" trick is intentionally **not** used — on macOS Tahoe the mirrored window blacks out whenever a capture context is active. We use the developer-services path instead, which captures the device's own framebuffer regardless of transport.
 
 ## License
 

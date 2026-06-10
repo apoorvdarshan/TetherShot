@@ -6,7 +6,7 @@ struct MenuContent: View {
 
     var body: some View {
         if model.devices.isEmpty {
-            Text("No iPhone detected over USB")
+            Text("No iPhone detected")
         } else {
             ForEach(model.devices) { device in
                 Button("📸  \(device.name) (\(device.connection.rawValue))") {
@@ -21,6 +21,11 @@ struct MenuContent: View {
         Divider()
 
         Button("Refresh Devices") { model.refreshDevices() }
+        if model.wirelessReady {
+            Text("Wi-Fi capture: ready")
+        } else {
+            Button("Set Up Wi-Fi Capture…") { model.setupWireless() }
+        }
 
         Divider()
 

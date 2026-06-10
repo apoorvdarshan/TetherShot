@@ -23,6 +23,10 @@ mkdir -p "${APP}/Contents/MacOS" "${APP}/Contents/Resources"
 cp "${BIN}" "${APP}/Contents/MacOS/TetherShot"
 cp Resources/Info.plist "${APP}/Contents/Info.plist"
 
+# Bundle the wireless setup scripts so the menu's "Set Up Wi-Fi Capture…" works.
+cp scripts/install-tunneld.sh scripts/uninstall-tunneld.sh "${APP}/Contents/Resources/"
+chmod +x "${APP}/Contents/Resources/"*.sh
+
 # Ad-hoc sign so TCC (Camera) can attribute permission to a stable bundle id.
 echo "[3/3] Ad-hoc signing..."
 codesign --force --deep --sign - "${APP}" >/dev/null 2>&1 || \
