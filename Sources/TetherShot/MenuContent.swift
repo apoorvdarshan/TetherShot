@@ -45,6 +45,18 @@ struct MenuContent: View {
             set: { model.setLaunchAtLogin($0) }
         ))
 
+        Divider()
+
+        if let update = model.availableUpdate {
+            Button("⬆︎  Update to \(update) — Relaunch") { model.installUpdate() }
+        } else {
+            Button("Check for Updates…") { model.checkForUpdates(manual: true) }
+        }
+        Toggle("Auto-check for Updates", isOn: Binding(
+            get: { model.autoCheckForUpdates },
+            set: { model.setAutoCheckForUpdates($0) }
+        ))
+
         if !model.lastStatus.isEmpty {
             Divider()
             Text(model.lastStatus)
@@ -52,6 +64,7 @@ struct MenuContent: View {
 
         Divider()
 
+        Text("TetherShot v\(model.appVersion)")
         Button("Quit TetherShot") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
     }

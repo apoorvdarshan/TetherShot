@@ -12,3 +12,9 @@ Package.resolved
 # Editor
 *.xcodeproj/xcuserdata/
 .vscode/
+
+# npm
+node_modules/
+*.tgz
+# .npmrc holds the publish auth line; never commit it
+.npmrc

@@ -18,11 +18,27 @@ macOS already lets QuickTime/OBS mirror a tethered iPhone's *screen* (it shows u
 - Xcode / Swift toolchain (Swift 6.x)
 - An iPhone connected by **USB** and set to **Trust This Computer**
 
-## Build & run
+## Install
+
+### Via npm (recommended)
 
 ```bash
-./build.sh            # compiles + packages TetherShot.app
-open TetherShot.app    # launches the menu-bar agent
+npm install -g tethershot     # installs the CLI (+ builds the app)
+tethershot install            # ensure the app is built & in ~/Applications
+tethershot                    # launch it
+```
+
+It **builds from source on your machine** (needs Xcode Command Line Tools — `xcode-select --install`). Because the app is compiled locally, it gets **no Gatekeeper quarantine** — it just runs, no "unidentified developer" dialog, no notarization. The app lands in `~/Applications` (no sudo).
+
+> npm 11+ blocks postinstall scripts by default, so if the app isn't built after `npm install`, the explicit `tethershot install` step always does it. Update any time with **`tethershot update`** or the in-app **Check for Updates**.
+
+### From source
+
+```bash
+git clone https://github.com/apoorvdarshan/TetherShot.git
+cd TetherShot
+./build.sh             # compiles + packages TetherShot.app
+open TetherShot.app     # launches the menu-bar agent
 ```
 
 On first capture macOS asks for **Camera** permission — that's expected: the iPhone screen is delivered through the camera (AVFoundation) privacy bucket. Grant it.
@@ -65,6 +81,7 @@ After that you can unplug. As long as the iPhone and Mac are on the same Wi-Fi, 
 - **Phase 1 — USB capture** ✅ native AVFoundation, pixel-perfect, zero setup beyond Trust.
 - **Phase 2 — Wireless (Wi-Fi)** ✅ `pymobiledevice3` + a root `tunneld` LaunchDaemon; `developer dvt screenshot` over the Wi-Fi tunnel. Cable-free and pixel-perfect.
 - **Phase 3 — Polish** ✅ global quick-capture hotkey (**⌘⇧7**, works anywhere), launch-at-login, capture notifications, and optional per-device subfolders.
+- **Distribution** ✅ published to npm as [`tethershot`](https://www.npmjs.com/package/tethershot) (builds from source, no Gatekeeper quarantine); in-app **Check for Updates** that updates via npm and relaunches.
 
 > **Note on wireless:** the "let the iPhone AirPlay-mirror to the Mac and screenshot that window" trick is intentionally **not** used — on macOS Tahoe the mirrored window blacks out whenever a capture context is active. We use the developer-services path instead, which captures the device's own framebuffer regardless of transport.
 

@@ -27,6 +27,17 @@ cp Resources/Info.plist "${APP}/Contents/Info.plist"
 cp scripts/install-tunneld.sh scripts/uninstall-tunneld.sh "${APP}/Contents/Resources/"
 chmod +x "${APP}/Contents/Resources/"*.sh
 
+# Stamp the bundle version from package.json (single source of truth), BEFORE
+# signing so the signature covers it.
+if [ -f package.json ] && command -v node >/dev/null 2>&1; then
+    VERSION="$(node -p "require('./package.json').version" 2>/dev/null || true)"
+    if [ -n "${VERSION}" ]; then
+        /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VERSION}" "${APP}/Contents/Info.plist" 2>/dev/null || true
+        /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VERSION}" "${APP}/Contents/Info.plist" 2>/dev/null || true
+        echo "      version ${VERSION}"
+    fi
+fi
+
 # Ad-hoc sign so TCC (Camera) can attribute permission to a stable bundle id.
 echo "[3/3] Ad-hoc signing..."
 codesign --force --deep --sign - "${APP}" >/dev/null 2>&1 || \

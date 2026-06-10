@@ -13,17 +13,25 @@ final class AppModel: ObservableObject {
     @Published var wirelessReady = false
     @Published var launchAtLogin = LaunchAtLogin.isEnabled
     @Published var organizeByDevice = UserDefaults.standard.bool(forKey: "organizeByDevice")
+    @Published var autoCheckForUpdates = (UserDefaults.standard.object(forKey: "autoCheckForUpdates") as? Bool) ?? true
+    @Published var availableUpdate: String?
 
     let hotKeyDisplay = HotKey.defaultDisplay
+    var appVersion: String { updater.currentVersion }
 
     private let usb = USBCapture()
     private let wireless = WirelessCapture()
+    private let updater = Updater()
     private var hotKey: HotKey?
+    private var isCapturing = false
 
     init() {
         Notifier.requestAuthorization()
         registerHotKey()
         refreshDevices()
+        if autoCheckForUpdates {
+            checkForUpdates(manual: false)
+        }
     }
 
     // MARK: Devices
@@ -76,6 +84,8 @@ final class AppModel: ObservableObject {
     }
 
     private func performCapture(_ device: CaptureDevice) async {
+        isCapturing = true
+        defer { isCapturing = false }
         lastStatus = "Capturing \(device.name)…"
         Log.shared.log("performCapture: '\(device.name)' [\(device.connection.rawValue)] -> \(destinationFolder.path)")
         do {
@@ -143,6 +153,47 @@ final class AppModel: ObservableObject {
     func setOrganizeByDevice(_ enabled: Bool) {
         organizeByDevice = enabled
         UserDefaults.standard.set(enabled, forKey: "organizeByDevice")
+    }
+
+    func setAutoCheckForUpdates(_ enabled: Bool) {
+        autoCheckForUpdates = enabled
+        UserDefaults.standard.set(enabled, forKey: "autoCheckForUpdates")
+    }
+
+    /// `manual` checks announce "up to date"; automatic checks stay silent unless
+    /// there's an update, to avoid nagging.
+    func checkForUpdates(manual: Bool) {
+        if manual { lastStatus = "Checking for updates…" }
+        Task {
+            guard let info = await updater.checkForUpdate() else {
+                if manual { lastStatus = "Update check failed (offline?)." }
+                return
+            }
+            if info.isNewer {
+                availableUpdate = info.latest
+                lastStatus = "Update available: \(info.latest)"
+            } else {
+                availableUpdate = nil
+                if manual { lastStatus = "You're up to date (\(appVersion))." }
+            }
+        }
+    }
+
+    func installUpdate() {
+        guard !isCapturing else {
+            lastStatus = "Finish the current capture before updating."
+            return
+        }
+        lastStatus = "Updating… (recompiling, ~1 min)"
+        Task {
+            let (ok, message) = await updater.installUpdate()
+            if ok {
+                lastStatus = "Updated — relaunching…"
+                updater.relaunchAndQuit()
+            } else {
+                lastStatus = "Update failed: \(message)"
+            }
+        }
     }
 
     private func registerHotKey() {
