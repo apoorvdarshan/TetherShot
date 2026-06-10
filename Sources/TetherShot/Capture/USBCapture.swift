@@ -1,4 +1,4 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import CoreMediaIO
 import AppKit
 
@@ -48,15 +48,17 @@ final class USBCapture: NSObject, CaptureBackend {
     }
 
     func capture(deviceID: String) async throws -> Data {
-        guard let device = discoverySession().devices.first(where: { $0.uniqueID == deviceID })
-            ?? AVCaptureDevice(uniqueID: deviceID) else {
-            throw CaptureError.noDevice
-        }
-
-        guard await AVCaptureDevice.requestAccess(for: .video) else {
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        guard status == .authorized else {
+            Log.shared.log("capture: camera not authorized (status \(status.rawValue))")
             throw CaptureError.permissionDenied
         }
-
+        guard let device = discoverySession().devices.first(where: { $0.uniqueID == deviceID })
+            ?? AVCaptureDevice(uniqueID: deviceID) else {
+            Log.shared.log("capture: device \(deviceID) not found")
+            throw CaptureError.noDevice
+        }
+        Log.shared.log("capture: device found '\(device.localizedName)' connected=\(device.isConnected)")
         return try await FrameGrabber().grab(device: device)
     }
 }
@@ -64,37 +66,59 @@ final class USBCapture: NSObject, CaptureBackend {
 /// Spins up a one-shot capture session, grabs the first delivered frame, and
 /// tears everything down. Lives for exactly one screenshot.
 ///
-/// `@unchecked Sendable`: all mutable state (`continuation`, `finished`) is
-/// touched only inside `finish`, which funnels every access onto `queue`.
+/// All AVFoundation work runs on a dedicated dispatch queue (never the Swift
+/// concurrency cooperative pool, where `startRunning()` can deadlock). A timeout
+/// is armed on an independent queue so the call can never hang forever.
+///
+/// `@unchecked Sendable`: `continuation`/`finished` are guarded by `lock`.
 private final class FrameGrabber: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     private let session = AVCaptureSession()
     private let output = AVCaptureVideoDataOutput()
-    private let queue = DispatchQueue(label: "com.apoorvdarshan.tethershot.capture")
+    private let sessionQueue = DispatchQueue(label: "com.apoorvdarshan.tethershot.session")
+    private let delegateQueue = DispatchQueue(label: "com.apoorvdarshan.tethershot.frames")
+    private let lock = NSLock()
     private var continuation: CheckedContinuation<Data, Error>?
     private var finished = false
 
     func grab(device: AVCaptureDevice) async throws -> Data {
-        try await withCheckedThrowingContinuation { continuation in
+        Log.shared.log("grab: begin '\(device.localizedName)'")
+        return try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
-            do {
-                let input = try AVCaptureDeviceInput(device: device)
-                session.beginConfiguration()
-                guard session.canAddInput(input) else {
-                    session.commitConfiguration()
-                    finish(.failure(CaptureError.other("Cannot read this device.")))
-                    return
-                }
-                session.addInput(input)
-                output.setSampleBufferDelegate(self, queue: queue)
-                if session.canAddOutput(output) { session.addOutput(output) }
-                session.commitConfiguration()
-                session.startRunning()
 
-                queue.asyncAfter(deadline: .now() + 6) { [weak self] in
-                    self?.finish(.failure(CaptureError.timeout))
+            // Independent timeout — cannot be blocked by session work.
+            DispatchQueue.global().asyncAfter(deadline: .now() + 8) { [weak self] in
+                self?.finish(.failure(CaptureError.timeout))
+            }
+
+            sessionQueue.async { [weak self] in
+                guard let self else { return }
+                do {
+                    let input = try AVCaptureDeviceInput(device: device)
+                    Log.shared.log("grab: input created")
+                    self.session.beginConfiguration()
+                    guard self.session.canAddInput(input) else {
+                        self.session.commitConfiguration()
+                        Log.shared.log("grab: canAddInput == false")
+                        self.finish(.failure(CaptureError.other("Cannot read this device.")))
+                        return
+                    }
+                    self.session.addInput(input)
+                    self.output.alwaysDiscardsLateVideoFrames = true
+                    self.output.setSampleBufferDelegate(self, queue: self.delegateQueue)
+                    if self.session.canAddOutput(self.output) {
+                        self.session.addOutput(self.output)
+                        Log.shared.log("grab: output added")
+                    } else {
+                        Log.shared.log("grab: canAddOutput == false")
+                    }
+                    self.session.commitConfiguration()
+                    Log.shared.log("grab: committed, calling startRunning")
+                    self.session.startRunning()
+                    Log.shared.log("grab: startRunning returned, isRunning=\(self.session.isRunning)")
+                } catch {
+                    Log.shared.log("grab: setup error \(error.localizedDescription)")
+                    self.finish(.failure(error))
                 }
-            } catch {
-                finish(.failure(error))
             }
         }
     }
@@ -102,22 +126,36 @@ private final class FrameGrabber: NSObject, AVCaptureVideoDataOutputSampleBuffer
     func captureOutput(_ output: AVCaptureOutput,
                        didOutput sampleBuffer: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
-        guard let png = Self.png(from: sampleBuffer) else { return }
+        guard let png = Self.png(from: sampleBuffer) else {
+            Log.shared.log("captureOutput: frame had no image buffer (awaiting next)")
+            return
+        }
+        Log.shared.log("captureOutput: encoded \(png.count) bytes")
         finish(.success(png))
     }
 
     /// Resolves the continuation exactly once and stops the session.
     private func finish(_ result: Result<Data, Error>) {
-        queue.async { [weak self] in
-            guard let self, !self.finished else { return }
-            self.finished = true
-            self.session.stopRunning()
-            let continuation = self.continuation
-            self.continuation = nil
-            switch result {
-            case .success(let data): continuation?.resume(returning: data)
-            case .failure(let error): continuation?.resume(throwing: error)
-            }
+        lock.lock()
+        if finished {
+            lock.unlock()
+            return
+        }
+        finished = true
+        let continuation = self.continuation
+        self.continuation = nil
+        lock.unlock()
+
+        let sessionRef = session
+        sessionQueue.async { sessionRef.stopRunning() }
+
+        switch result {
+        case .success(let data):
+            Log.shared.log("finish: success (\(data.count) bytes)")
+            continuation?.resume(returning: data)
+        case .failure(let error):
+            Log.shared.log("finish: failure (\(error.localizedDescription))")
+            continuation?.resume(throwing: error)
         }
     }
 

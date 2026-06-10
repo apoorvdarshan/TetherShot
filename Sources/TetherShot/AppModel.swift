@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import AVFoundation
 
 /// Owns app state and orchestrates capture. UI reads `@Published` values; all
 /// mutation happens on the main actor so the menu always renders a consistent view.
@@ -30,17 +31,48 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Brings the prompt to the front for `.notDetermined`; routes `.denied`
+    /// straight to the right Settings pane so the user isn't left guessing.
+    private func ensureCameraAccess() async -> Bool {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            return true
+        case .notDetermined:
+            NSApp.activate(ignoringOtherApps: true)
+            return await AVCaptureDevice.requestAccess(for: .video)
+        case .denied, .restricted:
+            lastStatus = "Camera blocked — enable TetherShot in Settings ▸ Privacy & Security ▸ Camera, then retry."
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") {
+                NSWorkspace.shared.open(url)
+            }
+            return false
+        @unknown default:
+            return false
+        }
+    }
+
     private func performCapture(_ device: CaptureDevice) async {
         lastStatus = "Capturing \(device.name)…"
+        Log.shared.log("performCapture: '\(device.name)' -> \(destinationFolder.path)")
+
+        guard await ensureCameraAccess() else {
+            if lastStatus.hasPrefix("Capturing") {
+                lastStatus = "Camera permission needed — grant it, then retry."
+            }
+            return
+        }
+
         do {
             let png = try await usb.capture(deviceID: device.id)
             try FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
             let url = destinationFolder.appendingPathComponent(Filename.make(deviceName: device.name))
             try png.write(to: url)
             lastStatus = "Saved \(url.lastPathComponent)"
+            Log.shared.log("performCapture: saved \(url.path)")
             NSSound(named: "Glass")?.play()
         } catch {
             lastStatus = "Error: \(error.localizedDescription)"
+            Log.shared.log("performCapture: error \(error.localizedDescription)")
         }
     }
 
