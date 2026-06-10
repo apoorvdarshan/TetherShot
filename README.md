@@ -47,6 +47,7 @@ Screenshots default to `~/Pictures/TetherShot`; change it any time with **Choose
 
 **Shortcuts & options**
 - **⌘⇧7** anywhere captures every connected iPhone without opening the menu.
+- **Copy to Clipboard** (on by default) puts each capture on the clipboard, ready to paste.
 - **Organize by Device** saves into a per-device subfolder.
 - **Launch at Login** keeps TetherShot in your menu bar across reboots.
 

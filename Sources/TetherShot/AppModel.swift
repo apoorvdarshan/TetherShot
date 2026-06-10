@@ -13,6 +13,7 @@ final class AppModel: ObservableObject {
     @Published var wirelessReady = false
     @Published var launchAtLogin = LaunchAtLogin.isEnabled
     @Published var organizeByDevice = UserDefaults.standard.bool(forKey: "organizeByDevice")
+    @Published var copyToClipboard = (UserDefaults.standard.object(forKey: "copyToClipboard") as? Bool) ?? true
     @Published var autoCheckForUpdates = (UserDefaults.standard.object(forKey: "autoCheckForUpdates") as? Bool) ?? true
     @Published var availableUpdate: String?
 
@@ -117,10 +118,15 @@ final class AppModel: ObservableObject {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = folder.appendingPathComponent(Filename.make(deviceName: device.name))
         try png.write(to: url)
-        lastStatus = "Saved \(url.lastPathComponent)"
-        Log.shared.log("performCapture: saved \(url.path)")
+        if copyToClipboard {
+            Pasteboard.copyPNG(png)
+        }
+        lastStatus = copyToClipboard
+            ? "Saved \(url.lastPathComponent) · copied to clipboard"
+            : "Saved \(url.lastPathComponent)"
+        Log.shared.log("performCapture: saved \(url.path)\(copyToClipboard ? " + clipboard" : "")")
         NSSound(named: "Glass")?.play()
-        Notifier.notify(title: "TetherShot", body: "Saved \(url.lastPathComponent)")
+        Notifier.notify(title: "TetherShot", body: lastStatus)
     }
 
     // MARK: Permissions / settings
@@ -153,6 +159,11 @@ final class AppModel: ObservableObject {
     func setOrganizeByDevice(_ enabled: Bool) {
         organizeByDevice = enabled
         UserDefaults.standard.set(enabled, forKey: "organizeByDevice")
+    }
+
+    func setCopyToClipboard(_ enabled: Bool) {
+        copyToClipboard = enabled
+        UserDefaults.standard.set(enabled, forKey: "copyToClipboard")
     }
 
     func setAutoCheckForUpdates(_ enabled: Bool) {

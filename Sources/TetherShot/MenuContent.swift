@@ -37,6 +37,10 @@ struct MenuContent: View {
             get: { model.organizeByDevice },
             set: { model.setOrganizeByDevice($0) }
         ))
+        Toggle("Copy to Clipboard", isOn: Binding(
+            get: { model.copyToClipboard },
+            set: { model.setCopyToClipboard($0) }
+        ))
 
         Divider()
 

@@ -61,10 +61,21 @@ final class Updater {
             return (false, "npm not found. Update manually:  npm i -g tethershot@latest")
         }
         // Long timeout: the postinstall recompiles the whole app.
-        let result = await Proc.run(npm, ["install", "-g", "\(Self.packageName)@latest"], timeout: 600)
-        guard result.status == 0 else {
-            let line = result.stderr.split(whereSeparator: \.isNewline).last.map(String.init)
+        let install = await Proc.run(npm, ["install", "-g", "\(Self.packageName)@latest"], timeout: 600)
+        guard install.status == 0 else {
+            let line = install.stderr.split(whereSeparator: \.isNewline).last.map(String.init)
             return (false, line ?? "npm install failed.")
+        }
+        // npm 11 defers postinstall by default (allow-scripts), so the .app may
+        // not have been rebuilt. Run the build explicitly via the freshly linked
+        // CLI — a user-invoked command, so it isn't gated by allow-scripts.
+        let cli = (npm as NSString).deletingLastPathComponent + "/\(Self.packageName)"
+        if FileManager.default.isExecutableFile(atPath: cli) {
+            let rebuild = await Proc.run(cli, ["install"], timeout: 600)
+            guard rebuild.status == 0 else {
+                let line = rebuild.stderr.split(whereSeparator: \.isNewline).last.map(String.init)
+                return (false, line ?? "Rebuild after update failed.")
+            }
         }
         return (true, "Updated.")
     }
