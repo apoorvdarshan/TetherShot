@@ -29,6 +29,11 @@ On first capture macOS asks for **Camera** permission — that's expected: the i
 
 Screenshots default to `~/Pictures/TetherShot`; change it any time with **Choose Folder…** in the menu.
 
+**Shortcuts & options**
+- **⌘⇧7** anywhere captures every connected iPhone without opening the menu.
+- **Organize by Device** saves into a per-device subfolder.
+- **Launch at Login** keeps TetherShot in your menu bar across reboots.
+
 ## How it works (Phase 1)
 
 | Piece | Role |
@@ -59,7 +64,7 @@ After that you can unplug. As long as the iPhone and Mac are on the same Wi-Fi, 
 
 - **Phase 1 — USB capture** ✅ native AVFoundation, pixel-perfect, zero setup beyond Trust.
 - **Phase 2 — Wireless (Wi-Fi)** ✅ `pymobiledevice3` + a root `tunneld` LaunchDaemon; `developer dvt screenshot` over the Wi-Fi tunnel. Cable-free and pixel-perfect.
-- **Phase 3 — Polish** — capture notification, global hotkey, launch-at-login, per-device subfolders.
+- **Phase 3 — Polish** ✅ global quick-capture hotkey (**⌘⇧7**, works anywhere), launch-at-login, capture notifications, and optional per-device subfolders.
 
 > **Note on wireless:** the "let the iPhone AirPlay-mirror to the Mac and screenshot that window" trick is intentionally **not** used — on macOS Tahoe the mirrored window blacks out whenever a capture context is active. We use the developer-services path instead, which captures the device's own framebuffer regardless of transport.
 

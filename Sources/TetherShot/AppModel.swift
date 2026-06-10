@@ -11,25 +11,32 @@ final class AppModel: ObservableObject {
     @Published var destinationFolder: URL = FolderStore.load()
     @Published var lastStatus: String = ""
     @Published var wirelessReady = false
+    @Published var launchAtLogin = LaunchAtLogin.isEnabled
+    @Published var organizeByDevice = UserDefaults.standard.bool(forKey: "organizeByDevice")
+
+    let hotKeyDisplay = HotKey.defaultDisplay
 
     private let usb = USBCapture()
     private let wireless = WirelessCapture()
+    private var hotKey: HotKey?
 
     init() {
+        Notifier.requestAuthorization()
+        registerHotKey()
         refreshDevices()
     }
 
+    // MARK: Devices
+
     /// Merges USB (AVFoundation, instant) and Wi-Fi (tunneld) device lists.
     func refreshDevices() {
-        let usbDevices = usb.discoverDevices()      // synchronous, instant
+        let usbDevices = usb.discoverDevices()
         devices = usbDevices                         // show USB immediately
         Task {
-            let ready = await wireless.isTunneldRunning()
-            let wifiDevices = await wireless.discoverDevicesAsync()
-            wirelessReady = ready
-            devices = usbDevices + wifiDevices
+            wirelessReady = await wireless.isTunneldRunning()
+            devices = await merged(with: usbDevices)
             if devices.isEmpty {
-                lastStatus = ready
+                lastStatus = wirelessReady
                     ? "No iPhone found. Plug in over USB, or check Wi-Fi/same network."
                     : "Plug in an iPhone over USB and tap Trust."
             } else {
@@ -38,6 +45,12 @@ final class AppModel: ObservableObject {
         }
     }
 
+    private func merged(with usbDevices: [CaptureDevice]) async -> [CaptureDevice] {
+        usbDevices + (await wireless.discoverDevicesAsync())
+    }
+
+    // MARK: Capture
+
     func capture(_ device: CaptureDevice) {
         Task { await performCapture(device) }
     }
@@ -45,6 +58,20 @@ final class AppModel: ObservableObject {
     func captureAll() {
         Task {
             for device in devices { await performCapture(device) }
+        }
+    }
+
+    /// Global-hotkey entry point: re-discovers, then captures every device found.
+    func hotKeyCapture() {
+        Task {
+            let list = await merged(with: usb.discoverDevices())
+            devices = list
+            guard !list.isEmpty else {
+                lastStatus = "Quick capture: no iPhone found"
+                NSSound(named: "Funk")?.play()
+                return
+            }
+            for device in list { await performCapture(device) }
         }
     }
 
@@ -73,13 +100,20 @@ final class AppModel: ObservableObject {
     }
 
     private func save(png: Data, device: CaptureDevice) throws {
-        try FileManager.default.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
-        let url = destinationFolder.appendingPathComponent(Filename.make(deviceName: device.name))
+        var folder = destinationFolder
+        if organizeByDevice {
+            folder = folder.appendingPathComponent(Filename.folderName(for: device.name), isDirectory: true)
+        }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appendingPathComponent(Filename.make(deviceName: device.name))
         try png.write(to: url)
         lastStatus = "Saved \(url.lastPathComponent)"
         Log.shared.log("performCapture: saved \(url.path)")
         NSSound(named: "Glass")?.play()
+        Notifier.notify(title: "TetherShot", body: "Saved \(url.lastPathComponent)")
     }
+
+    // MARK: Permissions / settings
 
     /// Camera access is only needed for the AVFoundation (USB) path. Brings the
     /// prompt to the front for `.notDetermined`; routes `.denied` straight to
@@ -102,6 +136,21 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func setLaunchAtLogin(_ enabled: Bool) {
+        launchAtLogin = LaunchAtLogin.set(enabled)
+    }
+
+    func setOrganizeByDevice(_ enabled: Bool) {
+        organizeByDevice = enabled
+        UserDefaults.standard.set(enabled, forKey: "organizeByDevice")
+    }
+
+    private func registerHotKey() {
+        hotKey = HotKey(keyCode: HotKey.defaultKeyCode, modifiers: HotKey.defaultModifiers) { [weak self] in
+            Task { @MainActor in self?.hotKeyCapture() }
+        }
+    }
+
     /// Runs the bundled installer for the wireless tunnel service. The script
     /// itself raises the admin-password prompt.
     func setupWireless() {
@@ -112,14 +161,14 @@ final class AppModel: ObservableObject {
         lastStatus = "Setting up wireless… (enter your password)"
         Task {
             let result = await Proc.run("/bin/bash", [script.path], timeout: 180)
-            if result.status == 0 {
-                lastStatus = "Wireless ready. Capturing over Wi-Fi is now available."
-            } else {
-                lastStatus = "Wireless setup failed: \(result.stderr.split(whereSeparator: \.isNewline).first.map(String.init) ?? "unknown")"
-            }
+            lastStatus = result.status == 0
+                ? "Wireless ready. Capturing over Wi-Fi is now available."
+                : "Wireless setup failed: \(result.stderr.split(whereSeparator: \.isNewline).first.map(String.init) ?? "unknown")"
             refreshDevices()
         }
     }
+
+    // MARK: Folder
 
     func chooseFolder() {
         NSApp.activate(ignoringOtherApps: true)

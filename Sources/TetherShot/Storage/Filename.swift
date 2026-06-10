@@ -11,11 +11,16 @@ enum Filename {
     }()
 
     static func make(deviceName: String, date: Date = Date()) -> String {
+        "\(folderName(for: deviceName))_\(formatter.string(from: date)).png"
+    }
+
+    /// Filesystem-safe device name used for both the filename stem and the
+    /// per-device subfolder.
+    static func folderName(for deviceName: String) -> String {
         let safe = deviceName
             .replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
             .replacingOccurrences(of: " ", with: "-")
-        let stem = safe.isEmpty ? "iPhone" : safe
-        return "\(stem)_\(formatter.string(from: date)).png"
+        return safe.isEmpty ? "iPhone" : safe
     }
 }

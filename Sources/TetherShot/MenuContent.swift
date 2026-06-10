@@ -17,6 +17,7 @@ struct MenuContent: View {
                 Button("📸  Screenshot All") { model.captureAll() }
             }
         }
+        Text("Quick capture anywhere: \(model.hotKeyDisplay)")
 
         Divider()
 
@@ -32,6 +33,17 @@ struct MenuContent: View {
         Text("Saving to: \(model.destinationFolder.lastPathComponent)")
         Button("Choose Folder…") { model.chooseFolder() }
         Button("Open Folder") { model.openFolder() }
+        Toggle("Organize by Device", isOn: Binding(
+            get: { model.organizeByDevice },
+            set: { model.setOrganizeByDevice($0) }
+        ))
+
+        Divider()
+
+        Toggle("Launch at Login", isOn: Binding(
+            get: { model.launchAtLogin },
+            set: { model.setLaunchAtLogin($0) }
+        ))
 
         if !model.lastStatus.isEmpty {
             Divider()
