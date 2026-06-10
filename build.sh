@@ -27,6 +27,22 @@ cp Resources/Info.plist "${APP}/Contents/Info.plist"
 cp scripts/install-tunneld.sh scripts/uninstall-tunneld.sh "${APP}/Contents/Resources/"
 chmod +x "${APP}/Contents/Resources/"*.sh
 
+# Generate the app icon from Resources/AppIcon.png (stock tools only: sips +
+# iconutil), so every from-source build/install gets the icon.
+if [ -f Resources/AppIcon.png ]; then
+    ICONSET="$(mktemp -d)/AppIcon.iconset"
+    mkdir -p "${ICONSET}"
+    for SZ in 16 32 128 256 512; do
+        sips -z "${SZ}" "${SZ}" Resources/AppIcon.png --out "${ICONSET}/icon_${SZ}x${SZ}.png" >/dev/null 2>&1
+        D2=$(( SZ * 2 ))
+        sips -z "${D2}" "${D2}" Resources/AppIcon.png --out "${ICONSET}/icon_${SZ}x${SZ}@2x.png" >/dev/null 2>&1
+    done
+    if iconutil -c icns "${ICONSET}" -o "${APP}/Contents/Resources/AppIcon.icns" 2>/dev/null; then
+        echo "      icon AppIcon.icns"
+    fi
+    rm -rf "$(dirname "${ICONSET}")"
+fi
+
 # Stamp the bundle version from package.json (single source of truth), BEFORE
 # signing so the signature covers it.
 if [ -f package.json ] && command -v node >/dev/null 2>&1; then

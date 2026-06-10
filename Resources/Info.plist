@@ -6,6 +6,8 @@
 	<string>TetherShot</string>
 	<key>CFBundleExecutable</key>
 	<string>TetherShot</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.apoorvdarshan.tethershot</string>
 	<key>CFBundleName</key>
