@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TetherShot — Screenshot your iPhone from the Mac menu bar</title>
+<meta name="description" content="TetherShot is a macOS menu-bar app that captures pixel-perfect iPhone screenshots over USB or Wi-Fi, straight into a folder you choose and onto your clipboard. Install with npm." />
+<link rel="icon" type="image/png" href="assets/favicon.png" />
+<meta property="og:title" content="TetherShot — iPhone screenshots from your Mac menu bar" />
+<meta property="og:description" content="Pixel-perfect iPhone screenshots over USB or Wi-Fi. Native Swift. Install with npm." />
+<meta property="og:image" content="assets/logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Archivo:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+<div class="aurora"><span class="a1"></span><span class="a2"></span></div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="index.html"><img src="assets/logo.png" alt="" /> TetherShot</a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#modes">Capture</a>
+      <a href="#install">Install</a>
+      <a href="docs.html">Docs</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+    </div>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="https://github.com/apoorvdarshan/TetherShot" target="_blank" rel="noopener">GitHub</a>
+      <a class="btn btn-primary" href="#install">Install</a>
+      <button class="nav-toggle" data-nav-toggle aria-label="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="container hero-grid">
+    <div>
+      <div class="hero-tag reveal in">macOS · menu bar · <b>v1.0.3</b></div>
+      <h1 class="reveal in" data-d="1">Screenshot your iPhone, <em>from the menu&nbsp;bar.</em></h1>
+      <p class="lead reveal in" data-d="2">Pixel-perfect captures over USB or Wi-Fi — saved to a folder you choose and copied to your clipboard. The screenshot tool Apple never shipped.</p>
+      <div class="hero-cta reveal in" data-d="3">
+        <a class="btn btn-primary" href="#install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg> Get TetherShot</a>
+        <a class="btn btn-ghost" href="docs.html">Read the docs</a>
+      </div>
+      <div class="hero-sub reveal in" data-d="4">
+        <span><i class="d"></i> Native Swift</span>
+        <span><i class="d"></i> Local-first · 0 telemetry</span>
+        <span><i class="d"></i> MIT</span>
+      </div>
+    </div>
+
+    <div class="reveal in" data-d="3">
+      <img class="hero-icon" src="assets/logo.png" alt="TetherShot icon" />
+      <div class="window">
+        <div class="window-bar">
+          <div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+          <div class="title"><img src="assets/logo.png" alt="" /> TetherShot</div>
+        </div>
+        <div class="window-body">
+          <div class="window-side">
+            <div class="menubar-mini">100% <img src="assets/logo.png" alt="" /></div>
+            <div class="shot">
+              <svg class="ap aperture" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3">
+                <circle cx="50" cy="50" r="34"/>
+                <path d="M50 16 L67 45 M84 50 L50 50 M67 84 L50 50 M16 50 L50 50 M33 84 L50 50 M33 16 L50 50"/>
+              </svg>
+            </div>
+          </div>
+          <div class="menu">
+            <div class="menu-row hl">📸&nbsp; Apoorv's iPhone (Wi-Fi)</div>
+            <div class="menu-row">📸&nbsp; Screenshot All</div>
+            <div class="menu-cap">Quick capture: ⌘⇧7</div>
+            <div class="menu-sep"></div>
+            <div class="menu-row dim">Wi-Fi capture: ready</div>
+            <div class="menu-row">Copy to Clipboard <span class="chk">✓</span></div>
+            <div class="menu-row">Organize by Device</div>
+            <div class="menu-sep"></div>
+            <div class="menu-row dim">Saved · copied to clipboard</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- spec strip -->
+  <div class="container"><div class="strip"><div class="strip-inner">
+    <div><b>1179×2556</b><span>Pixel-perfect</span></div>
+    <div><b>USB + Wi-Fi</b><span>Two modes</span></div>
+    <div><b>~1.5s</b><span>Per capture</span></div>
+    <div><b>⌘⇧7</b><span>Capture anywhere</span></div>
+  </div></div></div>
+</header>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">Features</p>
+      <h2>One thing, done <span class="serif-i accent">brilliantly.</span></h2>
+      <p>A tiny native agent that lives in your menu bar, captures in a click, and gets out of the way.</p>
+    </div>
+    <div class="flist">
+      <div class="frow reveal"><div class="fnum">01</div><h3>USB capture</h3><div class="fdesc">A trusted, cabled iPhone shows up as a screen source. Native AVFoundation grabs the real, full-resolution frame — no QuickTime dance.</div></div>
+      <div class="frow reveal"><div class="fnum">02</div><h3>Wi-Fi capture</h3><div class="fdesc">Capture wirelessly over your local network through Apple's developer-services tunnel — same pixel-perfect frame, even when the phone is locked.</div></div>
+      <div class="frow reveal"><div class="fnum">03</div><h3>Straight to clipboard</h3><div class="fdesc">Every capture is copied and ready to paste into chat, docs, or an editor. Toggle it off whenever you like.</div></div>
+      <div class="frow reveal"><div class="fnum">04</div><h3>Global hotkey</h3><div class="fdesc">Press <span class="kbd">⌘⇧7</span> from anywhere to capture every connected device — no menu, no clicks.</div></div>
+      <div class="frow reveal"><div class="fnum">05</div><h3>Your folder, your rules</h3><div class="fdesc">Pick any destination. Timestamped filenames, optional per-device subfolders, remembered across launches.</div></div>
+      <div class="frow reveal"><div class="fnum">06</div><h3>Self-updating via npm</h3><div class="fdesc">Built-in “Check for Updates” pulls the latest from npm, rebuilds, and relaunches itself. Always current.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- MODES -->
+<section id="modes">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">Capture modes</p>
+      <h2>Two ways in. Both <span class="serif-i">pixel-perfect.</span></h2>
+    </div>
+    <div class="modes reveal">
+      <div class="mode">
+        <div class="badge">01 / USB</div>
+        <h3>Plug in &amp; go</h3>
+        <p>The fastest, zero-setup path — just trust the Mac once.</p>
+        <ul>
+          <li>Native AVFoundation, no daemons</li>
+          <li>Full device resolution</li>
+          <li>Works the moment you connect</li>
+        </ul>
+      </div>
+      <div class="mode">
+        <div class="badge">02 / Wi-Fi</div>
+        <h3>Cut the cable</h3>
+        <p>One-time setup, then capture from across the room.</p>
+        <ul>
+          <li>RemoteXPC tunnel via pymobiledevice3</li>
+          <li>Captures even when locked</li>
+          <li>Auto-discovered on your network</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section>
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">How it works</p>
+      <h2>Three steps to a <span class="serif-i">screenshot.</span></h2>
+    </div>
+    <div class="steps reveal">
+      <div class="step"><div class="num">1</div><h3>Install</h3><p>One npm command builds the native app and drops it in <code>~/Applications</code>.</p><div class="line">npm install -g tethershot</div></div>
+      <div class="step"><div class="num">2</div><h3>Connect</h3><p>Plug in and tap Trust, or set up Wi-Fi once for cable-free captures.</p><div class="line">USB · or · Wi-Fi</div></div>
+      <div class="step"><div class="num">3</div><h3>Capture</h3><p>Click the menu-bar icon or hit the hotkey. Saved to your folder, copied to clipboard.</p><div class="line">click → saved + copied</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section id="install">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">Install</p>
+      <h2>Running in about a <span class="serif-i">minute.</span></h2>
+      <p>TetherShot builds from source on your Mac, so it launches with no Gatekeeper warning and no notarization needed. You'll need the Xcode Command Line Tools.</p>
+    </div>
+    <div class="split">
+      <div class="code reveal">
+        <div class="code-head"><span class="dots"><i></i><i></i><i></i></span> install via npm <button class="copy-btn" data-copy="npm install -g tethershot && tethershot install">copy</button></div>
+<pre><span class="c"># 1 · install the CLI (and build the app)</span>
+npm install -g <span class="k">tethershot</span>
+
+<span class="c"># 2 · ensure the app is in ~/Applications</span>
+<span class="k">tethershot</span> install
+
+<span class="c"># 3 · launch — look for the menu-bar icon</span>
+<span class="k">tethershot</span></pre>
+      </div>
+      <div class="reveal" data-d="2">
+        <div class="code">
+          <div class="code-head"><span class="dots"><i></i><i></i><i></i></span> optional · cable-free Wi-Fi</div>
+<pre><span class="c"># tunnel service (asks for admin pw once)</span>
+<span class="k">tethershot</span> setup-wifi
+
+<span class="c"># on the iPhone, once over USB:</span>
+<span class="c">#  · enable Developer Mode</span>
+pymobiledevice3 lockdown \
+  wifi-connections --state on</pre>
+        </div>
+        <p class="note" style="margin-top:16px"><b>Requirements:</b> macOS 14+ (built on Tahoe 26), Xcode Command Line Tools (<code>xcode-select --install</code>), and an iPhone you can trust. Wi-Fi uses <a href="https://github.com/doronz88/pymobiledevice3" target="_blank" rel="noopener">pymobiledevice3</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLI -->
+<section style="padding-top:0">
+  <div class="container">
+    <div class="section-head reveal"><p class="eyebrow">CLI</p><h2>One command, a few <span class="serif-i">verbs.</span></h2></div>
+    <div class="code reveal">
+      <div class="code-head"><span class="dots"><i></i><i></i><i></i></span> tethershot --help</div>
+<pre><span class="k">tethershot</span>            <span class="c"># launch the app</span>
+<span class="k">tethershot</span> install    <span class="c"># build &amp; install to ~/Applications</span>
+<span class="k">tethershot</span> update     <span class="c"># update to the latest version</span>
+<span class="k">tethershot</span> setup-wifi <span class="c"># install the Wi-Fi tunnel service</span>
+<span class="k">tethershot</span> uninstall  <span class="c"># remove the app</span>
+<span class="k">tethershot</span> version    <span class="c"># print the installed version</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section>
+  <div class="container">
+    <div class="section-head center reveal"><p class="eyebrow">FAQ</p><h2>Good <span class="serif-i">questions.</span></h2></div>
+    <div class="faq">
+      <details class="reveal"><summary>Does it really work wirelessly?</summary><p>Yes. After a one-time USB pairing and enabling Developer Mode, TetherShot captures over your local Wi-Fi using Apple's developer-services tunnel — pixel-perfect and cable-free, even when the phone is locked.</p></details>
+      <details class="reveal"><summary>Is my data sent anywhere?</summary><p>No. Screenshots are written straight to your local folder and clipboard. No analytics, no account, no server. See the <a href="privacy.html">Privacy Policy</a>.</p></details>
+      <details class="reveal"><summary>Why does it ask for Camera permission?</summary><p>For USB capture, macOS exposes the iPhone's mirrored screen through the AVFoundation (camera) pipeline, so it's gated by the Camera privacy bucket. TetherShot never uses your Mac's camera.</p></details>
+      <details class="reveal"><summary>Why build from source instead of a download?</summary><p>A locally compiled app gets no Gatekeeper quarantine, so it just runs — no “unidentified developer” wall and no paid notarization. The tradeoff is you need the Xcode Command Line Tools.</p></details>
+      <details class="reveal"><summary>Does it support Android?</summary><p>Not today — TetherShot is iPhone-only by design. Android via <code>adb</code> is a possible future direction.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section>
+  <div class="container">
+    <div class="cta-band reveal">
+      <svg class="aperture" width="42" height="42" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="4"><circle cx="50" cy="50" r="34"/><path d="M50 16 L67 45 M84 50 L50 50 M67 84 L50 50 M16 50 L50 50 M33 84 L50 50 M33 16 L50 50"/></svg>
+      <h2>Grab your first <span class="serif-i">iPhone screenshot.</span></h2>
+      <p>Free and open source. One command to install.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#install">npm install -g tethershot</a>
+        <a class="btn btn-ghost" href="https://github.com/apoorvdarshan/TetherShot" target="_blank" rel="noopener">View on GitHub</a>
+        <a class="btn btn-ghost kofi" href="https://ko-fi.com/apoorvdarshan" target="_blank" rel="noopener">♥ Support on Ko-fi</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="index.html"><img src="assets/logo.png" alt="" /> TetherShot</a>
+        <p class="muted">iPhone screenshots from your Mac menu bar. USB or Wi-Fi, pixel-perfect, local-first.</p>
+        <div class="social">
+          <a href="https://x.com/apoorvdarshan" target="_blank" rel="noopener" aria-label="Follow on X">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231Zm-1.16 17.52h1.832L7.084 4.126H5.117l11.967 15.644Z"/></svg>
+            Follow @apoorvdarshan
+          </a>
+          <a class="kofi" href="https://ko-fi.com/apoorvdarshan" target="_blank" rel="noopener" aria-label="Support on Ko-fi">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h13a1 1 0 0 1 1 1h1.5a3.5 3.5 0 0 1 0 7H18a6 6 0 0 1-6 5H9a6 6 0 0 1-6-6V6a1 1 0 0 1 1-1Zm14 3v3h1.5a1.5 1.5 0 0 0 0-3H18Z"/></svg>
+            Support on Ko-fi
+          </a>
+        </div>
+      </div>
+      <div><h4>Product</h4><ul><li><a href="#features">Features</a></li><li><a href="#modes">Capture modes</a></li><li><a href="#install">Install</a></li><li><a href="docs.html">Documentation</a></li></ul></div>
+      <div><h4>Project</h4><ul><li><a href="https://github.com/apoorvdarshan/TetherShot" target="_blank" rel="noopener">GitHub</a></li><li><a href="https://www.npmjs.com/package/tethershot" target="_blank" rel="noopener">npm</a></li><li><a href="https://github.com/apoorvdarshan/TetherShot/issues" target="_blank" rel="noopener">Issues</a></li></ul></div>
+      <div><h4>Legal</h4><ul><li><a href="privacy.html">Privacy Policy</a></li><li><a href="terms.html">Terms of Use</a></li><li><a href="https://github.com/apoorvdarshan/TetherShot/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span data-year>2026</span> Apoorv Darshan — MIT</span>
+      <span>Not affiliated with Apple Inc. iPhone is a trademark of Apple Inc.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy — TetherShot</title>
+<meta name="description" content="TetherShot privacy policy. Local-first, no data collection, no telemetry." />
+<link rel="icon" type="image/png" href="assets/favicon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Archivo:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+<div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+
+<nav class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="index.html"><img src="assets/logo.png" alt="" /> TetherShot</a>
+    <div class="nav-links">
+      <a href="index.html#features">Features</a>
+      <a href="index.html#install">Install</a>
+      <a href="docs.html">Docs</a>
+      <a href="terms.html">Terms</a>
+      <a href="https://github.com/apoorvdarshan/TetherShot" target="_blank" rel="noopener">GitHub</a>
+    </div>
+    <div class="nav-cta">
+      <a class="btn btn-primary" href="index.html#install">Install</a>
+      <button class="nav-toggle" data-nav-toggle aria-label="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-hero">
+  <div class="container">
+    <p class="eyebrow">Legal</p>
+    <h1>Privacy Policy</h1>
+    <p>The short version: TetherShot runs entirely on your Mac. It collects nothing, sends nothing, and has no servers.</p>
+  </div>
+</header>
+
+<div class="container" style="padding-bottom:90px">
+  <article class="prose" style="margin-inline:auto">
+    <p class="updated">Last updated: June 2026</p>
+
+    <h2 id="summary">Summary</h2>
+    <p>TetherShot is a <strong>local-first</strong>, open-source desktop app. It does not collect, transmit, sell, or share any personal data. There is no account, no analytics, no telemetry, and no backend service operated by us.</p>
+
+    <h2 id="what">What TetherShot handles</h2>
+    <ul>
+      <li><strong>Screenshots</strong> — captured frames are written directly to the local folder you choose and, if you enable it, copied to your system clipboard. They are never uploaded anywhere by TetherShot.</li>
+      <li><strong>Device names</strong> — your iPhone's name and identifier are read locally to list and target devices. They stay on your machine.</li>
+      <li><strong>Preferences</strong> — your destination folder and toggles (clipboard, per-device folders, hotkey, launch-at-login, auto-update) are stored locally in macOS <code>UserDefaults</code>.</li>
+      <li><strong>Diagnostic log</strong> — a local file at <code>~/Library/Logs/TetherShot.log</code> records capture steps to help you debug. It never leaves your Mac; delete it any time.</li>
+    </ul>
+
+    <h2 id="permissions">Permissions</h2>
+    <ul>
+      <li><strong>Camera</strong> — required only because macOS exposes a USB-connected iPhone's mirrored screen through the AVFoundation (camera) pipeline. TetherShot does not access your Mac's camera or take photos.</li>
+      <li><strong>Screen recording</strong> — not used by TetherShot.</li>
+    </ul>
+
+    <h2 id="network">Network activity</h2>
+    <p>TetherShot makes network connections only in these clearly-bounded cases, and never to any service operated by us:</p>
+    <ul>
+      <li><strong>Wi-Fi capture</strong> — to your iPhone, over your local network, via the developer-services tunnel. The image data stays between your Mac and your phone.</li>
+      <li><strong>Update checks</strong> — if you enable “Auto-check for Updates,” the app requests the latest version number from the public <a href="https://registry.npmjs.org" target="_blank" rel="noopener">npm registry</a>. This is a standard read request and sends no personal data. You can turn it off.</li>
+    </ul>
+
+    <h2 id="third-parties">Third-party tools</h2>
+    <p>Wi-Fi capture relies on <a href="https://github.com/doronz88/pymobiledevice3" target="_blank" rel="noopener">pymobiledevice3</a>, an open-source tool you install yourself. Installation and updates use <a href="https://www.npmjs.com/" target="_blank" rel="noopener">npm</a>. Those projects have their own policies; TetherShot does not transmit your data to them.</p>
+
+    <h2 id="children">Children &amp; jurisdiction</h2>
+    <p>TetherShot is a developer utility with no data collection, so it carries no special data-handling obligations. Because nothing is collected or transmitted to us, there is no personal data for us to access, retain, export, or delete.</p>
+
+    <h2 id="changes">Changes</h2>
+    <p>If this policy ever changes, the updated version will appear here and in the project repository. Material changes will be noted in the release notes.</p>
+
+    <h2 id="contact">Contact</h2>
+    <p>Questions? Open an issue at <a href="https://github.com/apoorvdarshan/TetherShot/issues" target="_blank" rel="noopener">github.com/apoorvdarshan/TetherShot</a>.</p>
+
+    <hr />
+    <p><a href="terms.html">Terms of Use →</a></p>
+  </article>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <div class="social" style="margin-bottom:22px">
+      <a href="https://x.com/apoorvdarshan" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231Zm-1.16 17.52h1.832L7.084 4.126H5.117l11.967 15.644Z"/></svg> Follow @apoorvdarshan</a>
+      <a class="kofi" href="https://ko-fi.com/apoorvdarshan" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h13a1 1 0 0 1 1 1h1.5a3.5 3.5 0 0 1 0 7H18a6 6 0 0 1-6 5H9a6 6 0 0 1-6-6V6a1 1 0 0 1 1-1Zm14 3v3h1.5a1.5 1.5 0 0 0 0-3H18Z"/></svg> Support on Ko-fi</a>
+    </div>
+    <div class="footer-bottom" style="border:0;padding-top:0">
+      <span>© <span data-year>2026</span> Apoorv Darshan · MIT</span>
+      <span><a href="index.html" style="color:var(--muted)">Home</a> · <a href="docs.html" style="color:var(--muted)">Docs</a> · <a href="terms.html" style="color:var(--muted)">Terms</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

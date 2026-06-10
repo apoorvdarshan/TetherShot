@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Documentation — TetherShot</title>
+<meta name="description" content="TetherShot documentation: install, USB & Wi-Fi capture, CLI reference, options, troubleshooting." />
+<link rel="icon" type="image/png" href="assets/favicon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Archivo:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+<div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+
+<nav class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="index.html"><img src="assets/logo.png" alt="" /> TetherShot</a>
+    <div class="nav-links">
+      <a href="index.html#features">Features</a>
+      <a href="index.html#install">Install</a>
+      <a href="docs.html">Docs</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="https://github.com/apoorvdarshan/TetherShot" target="_blank" rel="noopener">GitHub</a>
+    </div>
+    <div class="nav-cta">
+      <a class="btn btn-primary" href="index.html#install">Install</a>
+      <button class="nav-toggle" data-nav-toggle aria-label="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    </div>
+  </div>
+</nav>
+
+<div class="container doc-layout">
+  <aside class="sidebar">
+    <h4>Getting started</h4>
+    <a href="#overview">Overview</a>
+    <a href="#requirements">Requirements</a>
+    <a href="#install">Install</a>
+    <a href="#first-capture">First capture (USB)</a>
+    <h4>Wireless</h4>
+    <a href="#wifi">Wi-Fi capture</a>
+    <h4>Reference</h4>
+    <a href="#cli">CLI</a>
+    <a href="#options">Options</a>
+    <a href="#updating">Updating</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+    <a href="#uninstall">Uninstall</a>
+  </aside>
+
+  <article class="prose">
+    <h1>Documentation</h1>
+    <p class="updated">TetherShot · macOS menu-bar app · MIT licensed</p>
+
+    <h2 id="overview">Overview</h2>
+    <p>TetherShot is a native macOS menu-bar app that captures <strong>pixel-perfect screenshots of an iPhone</strong> and saves them to a folder you choose (optionally copying each to your clipboard). It supports two capture paths:</p>
+    <ul>
+      <li><strong>USB</strong> — a trusted, cabled iPhone is exposed to macOS as a screen source via AVFoundation. Instant, no extra setup.</li>
+      <li><strong>Wi-Fi</strong> — cable-free capture over your local network using Apple's developer-services tunnel (powered by <a href="https://github.com/doronz88/pymobiledevice3" target="_blank" rel="noopener">pymobiledevice3</a>). Requires a one-time setup.</li>
+    </ul>
+    <p>The app runs as a background agent — no Dock icon, just a menu-bar glyph.</p>
+
+    <h2 id="requirements">Requirements</h2>
+    <ul>
+      <li><strong>macOS 14 (Sonoma) or later</strong> — developed and tested on macOS 26 (Tahoe).</li>
+      <li><strong>Xcode Command Line Tools</strong> — needed to build from source: <code>xcode-select --install</code>.</li>
+      <li><strong>Node.js 18+</strong> — to install via npm.</li>
+      <li>An <strong>iPhone</strong> you can set to <em>Trust This Computer</em>.</li>
+      <li>For Wi-Fi: the iPhone and Mac on the <strong>same network</strong>, plus <a href="https://github.com/doronz88/pymobiledevice3" target="_blank" rel="noopener">pymobiledevice3</a>.</li>
+    </ul>
+
+    <h2 id="install">Install</h2>
+    <p>The recommended path is npm. TetherShot builds from source on your machine — a locally compiled app gets no Gatekeeper quarantine, so it launches with no “unidentified developer” warning.</p>
+    <div class="code">
+      <div class="code-head">via npm</div>
+<pre>npm install -g <span class="k">tethershot</span>   <span class="c"># links the CLI (and builds the app)</span>
+<span class="k">tethershot</span> install         <span class="c"># ensure the app is in ~/Applications</span>
+<span class="k">tethershot</span>                 <span class="c"># launch it</span></pre>
+    </div>
+    <p class="note"><b>Note:</b> npm 11+ blocks <code>postinstall</code> scripts by default, so if the app isn't built after <code>npm install</code>, the explicit <code>tethershot install</code> step always does it.</p>
+    <h3>From source</h3>
+    <div class="code">
+      <div class="code-head">git</div>
+<pre>git clone https://github.com/apoorvdarshan/TetherShot.git
+cd TetherShot
+./build.sh             <span class="c"># compiles + packages TetherShot.app</span>
+open TetherShot.app</pre>
+    </div>
+
+    <h2 id="first-capture">First capture (USB)</h2>
+    <ol>
+      <li>Connect your iPhone with a cable and tap <strong>Trust This Computer</strong> (unlock if prompted).</li>
+      <li>Click the TetherShot icon in the menu bar.</li>
+      <li>Your phone appears as <code>📸 &lt;name&gt; (USB)</code> — click it. (Use <strong>Refresh Devices</strong> if it's not listed yet.)</li>
+      <li>The first capture triggers a one-time <strong>Camera</strong> permission prompt — allow it. (The iPhone screen rides the camera privacy bucket; your Mac camera is never used.)</li>
+      <li>The PNG lands in your folder (default <code>~/Pictures/TetherShot</code>) and, if enabled, on your clipboard.</li>
+    </ol>
+
+    <h2 id="wifi">Wi-Fi capture</h2>
+    <p>Wireless capture uses a root tunnel daemon (<code>tunneld</code>) that keeps a RemoteXPC tunnel alive so captures need no <code>sudo</code>. One-time setup:</p>
+    <div class="code">
+      <div class="code-head">one-time setup</div>
+<pre><span class="c"># 1 · install pymobiledevice3 (the engine)</span>
+pip3 install -U pymobiledevice3
+
+<span class="c"># 2 · install the tunnel service (asks for admin password once)</span>
+<span class="k">tethershot</span> setup-wifi
+
+<span class="c"># 3 · with the iPhone connected over USB once:</span>
+<span class="c">#     enable Developer Mode (Settings ▸ Privacy &amp; Security)</span>
+pymobiledevice3 lockdown wifi-connections --state on</pre>
+    </div>
+    <p>After that you can unplug. While the iPhone and Mac are on the same Wi-Fi, the menu shows it as <code>(Wi-Fi)</code> and captures are pixel-perfect — even when the phone is locked. The tunnel daemon is discovered automatically.</p>
+    <p class="note"><b>Why not AirPlay mirroring?</b> On macOS Tahoe, a mirrored iPhone window blacks out whenever any screen-capture context is active, so TetherShot uses the developer-services path instead — it captures the device's own framebuffer regardless of transport.</p>
+
+    <h2 id="cli">CLI</h2>
+    <div class="code">
+      <div class="code-head">tethershot</div>
+<pre><span class="k">tethershot</span>            <span class="c"># launch the app</span>
+<span class="k">tethershot</span> install    <span class="c"># build &amp; install to ~/Applications</span>
+<span class="k">tethershot</span> update     <span class="c"># update to the latest published version</span>
+<span class="k">tethershot</span> setup-wifi <span class="c"># install the Wi-Fi tunnel service</span>
+<span class="k">tethershot</span> uninstall  <span class="c"># remove the app</span>
+<span class="k">tethershot</span> version    <span class="c"># print the installed version</span></pre>
+    </div>
+
+    <h2 id="options">Options</h2>
+    <p>All options live in the menu and persist across launches:</p>
+    <ul>
+      <li><strong>Copy to Clipboard</strong> <em>(on by default)</em> — also place each capture on the clipboard, ready to paste.</li>
+      <li><strong>Organize by Device</strong> — save into a per-device subfolder.</li>
+      <li><strong>Choose Folder…</strong> — pick any destination; the choice is remembered.</li>
+      <li><strong>Quick capture</strong> — press <span class="kbd">⌘⇧7</span> anywhere to capture every connected device without opening the menu.</li>
+      <li><strong>Launch at Login</strong> — keep TetherShot in your menu bar across reboots.</li>
+      <li><strong>Auto-check for Updates</strong> — quietly check npm for newer versions.</li>
+    </ul>
+
+    <h2 id="updating">Updating</h2>
+    <p>Use <strong>Check for Updates…</strong> in the menu, then <strong>Update &amp; Relaunch</strong> — it runs <code>npm install -g tethershot@latest</code>, rebuilds, and relaunches itself. Or from the terminal:</p>
+    <div class="code"><div class="code-head">terminal</div><pre><span class="k">tethershot</span> update</pre></div>
+    <p class="note"><b>Heads-up:</b> the from-source build is ad-hoc signed, which isn't stable across rebuilds, so an update may re-trigger the one-time Camera permission prompt.</p>
+
+    <h2 id="troubleshooting">Troubleshooting</h2>
+    <h3>The iPhone isn't listed</h3>
+    <p>Make sure it's unlocked and trusted, then hit <strong>Refresh Devices</strong>. Over USB it must appear as a screen source; a wireless-only connection surfaces as a camera, which TetherShot ignores by design.</p>
+    <h3>“Capturing…” hangs or errors</h3>
+    <p>Confirm the iPhone is unlocked. For Wi-Fi, ensure the <code>tunneld</code> service is running (<code>tethershot setup-wifi</code> installs it) and both devices share a network/subnet.</p>
+    <h3>Camera permission blocked</h3>
+    <p>Enable TetherShot under <strong>System Settings ▸ Privacy &amp; Security ▸ Camera</strong>, then capture again.</p>
+
+    <h2 id="uninstall">Uninstall</h2>
+    <div class="code">
+      <div class="code-head">terminal</div>
+<pre><span class="k">tethershot</span> uninstall                 <span class="c"># removes the app</span>
+npm uninstall -g <span class="k">tethershot</span>         <span class="c"># removes the CLI</span>
+bash scripts/uninstall-tunneld.sh   <span class="c"># removes the Wi-Fi service</span></pre>
+    </div>
+
+    <hr />
+    <p>Questions or bugs? Open an issue on <a href="https://github.com/apoorvdarshan/TetherShot/issues" target="_blank" rel="noopener">GitHub</a>.</p>
+  </article>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <div class="social" style="margin-bottom:22px">
+      <a href="https://x.com/apoorvdarshan" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231Zm-1.16 17.52h1.832L7.084 4.126H5.117l11.967 15.644Z"/></svg> Follow @apoorvdarshan</a>
+      <a class="kofi" href="https://ko-fi.com/apoorvdarshan" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h13a1 1 0 0 1 1 1h1.5a3.5 3.5 0 0 1 0 7H18a6 6 0 0 1-6 5H9a6 6 0 0 1-6-6V6a1 1 0 0 1 1-1Zm14 3v3h1.5a1.5 1.5 0 0 0 0-3H18Z"/></svg> Support on Ko-fi</a>
+    </div>
+    <div class="footer-bottom" style="border:0;padding-top:0">
+      <span>© <span data-year>2026</span> Apoorv Darshan · MIT</span>
+      <span><a href="index.html" style="color:var(--muted)">Home</a> · <a href="privacy.html" style="color:var(--muted)">Privacy</a> · <a href="terms.html" style="color:var(--muted)">Terms</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
