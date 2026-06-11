@@ -60,6 +60,10 @@ struct MenuContent: View {
             get: { model.autoCheckForUpdates },
             set: { model.setAutoCheckForUpdates($0) }
         ))
+        Toggle("Auto-update (install & relaunch)", isOn: Binding(
+            get: { model.autoInstallUpdates },
+            set: { model.setAutoInstallUpdates($0) }
+        ))
 
         if !model.lastStatus.isEmpty {
             Divider()
@@ -68,8 +72,20 @@ struct MenuContent: View {
 
         Divider()
 
+        Button("View Source on GitHub") { open("https://github.com/apoorvdarshan/TetherShot") }
+        Button("Report an Issue…") { open("https://github.com/apoorvdarshan/TetherShot/issues/new") }
+        Button("Vote on Product Hunt") { open("https://www.producthunt.com/products/tethershot") }
+        Button("Support on Ko-fi") { open("https://ko-fi.com/apoorvdarshan") }
+        Button("Follow @apoorvdarshan on X") { open("https://x.com/apoorvdarshan") }
+
+        Divider()
+
         Text("TetherShot v\(model.appVersion)")
         Button("Quit TetherShot") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
+    }
+
+    private func open(_ urlString: String) {
+        if let url = URL(string: urlString) { NSWorkspace.shared.open(url) }
     }
 }

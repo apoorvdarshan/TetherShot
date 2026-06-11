@@ -15,6 +15,7 @@ final class AppModel: ObservableObject {
     @Published var organizeByDevice = UserDefaults.standard.bool(forKey: "organizeByDevice")
     @Published var copyToClipboard = (UserDefaults.standard.object(forKey: "copyToClipboard") as? Bool) ?? true
     @Published var autoCheckForUpdates = (UserDefaults.standard.object(forKey: "autoCheckForUpdates") as? Bool) ?? true
+    @Published var autoInstallUpdates = (UserDefaults.standard.object(forKey: "autoInstallUpdates") as? Bool) ?? false
     @Published var availableUpdate: String?
 
     let hotKeyDisplay = HotKey.defaultDisplay
@@ -30,7 +31,7 @@ final class AppModel: ObservableObject {
         Notifier.requestAuthorization()
         registerHotKey()
         refreshDevices()
-        if autoCheckForUpdates {
+        if autoCheckForUpdates || autoInstallUpdates {
             checkForUpdates(manual: false)
         }
     }
@@ -171,6 +172,14 @@ final class AppModel: ObservableObject {
         UserDefaults.standard.set(enabled, forKey: "autoCheckForUpdates")
     }
 
+    /// When on, the app silently installs a newer version and relaunches as soon
+    /// as one is found (implies checking).
+    func setAutoInstallUpdates(_ enabled: Bool) {
+        autoInstallUpdates = enabled
+        UserDefaults.standard.set(enabled, forKey: "autoInstallUpdates")
+        if enabled { checkForUpdates(manual: false) }
+    }
+
     /// `manual` checks announce "up to date"; automatic checks stay silent unless
     /// there's an update, to avoid nagging.
     func checkForUpdates(manual: Bool) {
@@ -182,7 +191,12 @@ final class AppModel: ObservableObject {
             }
             if info.isNewer {
                 availableUpdate = info.latest
-                lastStatus = "Update available: \(info.latest)"
+                if autoInstallUpdates {
+                    lastStatus = "Auto-updating to \(info.latest)…"
+                    installUpdate()
+                } else {
+                    lastStatus = "Update available: \(info.latest)"
+                }
             } else {
                 availableUpdate = nil
                 if manual { lastStatus = "You're up to date (\(appVersion))." }

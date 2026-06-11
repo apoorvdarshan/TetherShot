@@ -117,6 +117,15 @@ h1,h2,h3,h4 { font-family: var(--display); font-weight: 600; line-height: 1.03; 
 .nav-social svg { width: 15px; height: 15px; }
 @media (max-width: 760px) { .nav-social { display: none; } }
 
+.social a.ph:hover { background: #DA552F; border-color: #DA552F; color: #fff; }
+
+/* Product Hunt "vote" badge */
+.ph-badge { display: inline-flex; align-items: center; gap: 10px; padding: 11px 17px; border-radius: 12px; border: 1px solid #DA552F; color: #ff7a52; background: rgba(218,85,47,.1); font-family: var(--mono); font-size: .8rem; font-weight: 500; transition: all .2s; }
+.ph-badge:hover { background: #DA552F; color: #fff; box-shadow: 0 12px 32px -12px rgba(218,85,47,.6); transform: translateY(-2px); }
+.ph-badge svg { width: 18px; height: 18px; }
+.ph-badge b { font-weight: 700; }
+.hero-ph { margin-top: 24px; }
+
 /* Tinted section bands break up the page */
 .band { background: var(--band); }
 
