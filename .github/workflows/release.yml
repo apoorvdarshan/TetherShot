@@ -1,0 +1,59 @@
+# Publishes TetherShot when a version tag is pushed.
+#
+# Trigger: pushing a tag like `v1.0.6` (which `npm version <patch|minor|major>`
+# creates for you). On that tag the workflow:
+#   1. verifies the tag matches package.json's version (catches a mis-pushed tag),
+#   2. publishes the package to npm, and
+#   3. creates the matching GitHub Release with auto-generated notes.
+#
+# One-time setup: add an npm **Automation** access token as the repo secret
+# NPM_TOKEN (Settings ▸ Secrets and variables ▸ Actions ▸ New repository secret).
+# An Automation token is required because it bypasses npm's publish 2FA in CI.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Don't let two tag pushes race each other through publish.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # create the GitHub Release
+  id-token: write # npm provenance (signed, verifiable publish)
+
+jobs:
+  release:
+    # Source-only package (it compiles on the user's Mac at install time), so a
+    # plain Linux runner can publish the tarball — no Swift build needed here.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Verify tag matches package.json version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          echo "tag=$TAG package.json=$PKG"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag v$TAG does not match package.json version $PKG"
+            exit 1
+          fi
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        run: gh release create "$GITHUB_REF_NAME" --title "TetherShot $GITHUB_REF_NAME" --generate-notes --verify-tag --latest
+        env:
+          GH_TOKEN: ${{ github.token }}
