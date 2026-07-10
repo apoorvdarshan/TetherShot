@@ -25,6 +25,7 @@ Sources/TetherShot/
   Diagnostics/            Log, Proc
 scripts/                  tunneld install/uninstall, npm postinstall
 web/                      marketing + docs site (deploys to Cloudflare Pages)
+functions/                Pages middleware (redirects the default hostname)
 build.sh                  compiles + packages TetherShot.app (+ icon, version stamp)
 ```
 
