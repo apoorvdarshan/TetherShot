@@ -42,14 +42,14 @@
 <!-- NAV -->
 <nav class="nav">
   <div class="container nav-inner">
-    <a class="brand" href="index.html"><img src="assets/logo.png" alt="" /> TetherShot</a>
+    <a class="brand" href="/"><img src="assets/logo.png" alt="" /> TetherShot</a>
     <div class="nav-links">
       <a href="#features">Features</a>
       <a href="#modes">Capture</a>
       <a href="#install">Install</a>
-      <a href="docs.html">Docs</a>
-      <a href="privacy.html">Privacy</a>
-      <a href="terms.html">Terms</a>
+      <a href="/docs">Docs</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
     </div>
     <div class="nav-cta">
       <div class="nav-social">
@@ -73,7 +73,7 @@
       <p class="lead reveal in" data-d="2">Pixel-perfect captures over USB or Wi-Fi — saved to a folder you choose and copied to your clipboard. The screenshot tool Apple never shipped.</p>
       <div class="hero-cta reveal in" data-d="3">
         <a class="btn btn-primary" href="#install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg> Get TetherShot</a>
-        <a class="btn btn-ghost" href="docs.html">Read the docs</a>
+        <a class="btn btn-ghost" href="/docs">Read the docs</a>
       </div>
       <div class="hero-sub reveal in" data-d="4">
         <span><i class="d"></i> Native Swift</span>
@@ -253,7 +253,7 @@ pymobiledevice3 lockdown \
     <div class="section-head center reveal"><p class="eyebrow">FAQ</p><h2>Good <span class="serif-i">questions.</span></h2></div>
     <div class="faq">
       <details class="reveal"><summary>Does it really work wirelessly?</summary><p>Yes. After a one-time USB pairing and enabling Developer Mode, TetherShot captures over your local Wi-Fi using Apple's developer-services tunnel — pixel-perfect and cable-free, even when the phone is locked.</p></details>
-      <details class="reveal"><summary>Is my data sent anywhere?</summary><p>No. Screenshots are written straight to your local folder and clipboard. No analytics, no account, no server. See the <a href="privacy.html">Privacy Policy</a>.</p></details>
+      <details class="reveal"><summary>Is my data sent anywhere?</summary><p>No. Screenshots are written straight to your local folder and clipboard. No analytics, no account, no server. See the <a href="/privacy">Privacy Policy</a>.</p></details>
       <details class="reveal"><summary>Why does it ask for Camera permission?</summary><p>For USB capture, macOS exposes the iPhone's mirrored screen through the AVFoundation (camera) pipeline, so it's gated by the Camera privacy bucket. TetherShot never uses your Mac's camera.</p></details>
       <details class="reveal"><summary>Why build from source instead of a download?</summary><p>A locally compiled app gets no Gatekeeper quarantine, so it just runs — no “unidentified developer” wall and no paid notarization. The tradeoff is you need the Xcode Command Line Tools.</p></details>
       <details class="reveal"><summary>Does it support Android?</summary><p>Not today — TetherShot is iPhone-only by design. Android via <code>adb</code> is a possible future direction.</p></details>
@@ -282,7 +282,7 @@ pymobiledevice3 lockdown \
   <div class="container">
     <div class="footer-grid">
       <div>
-        <a class="brand" href="index.html"><img src="assets/logo.png" alt="" /> TetherShot</a>
+        <a class="brand" href="/"><img src="assets/logo.png" alt="" /> TetherShot</a>
         <p class="muted">iPhone screenshots from your Mac menu bar. USB or Wi-Fi, pixel-perfect, local-first.</p>
         <div class="social">
           <a href="https://x.com/apoorvdarshan" target="_blank" rel="noopener" aria-label="Follow on X">
@@ -299,9 +299,9 @@ pymobiledevice3 lockdown \
           </a>
         </div>
       </div>
-      <div><h4>Product</h4><ul><li><a href="#features">Features</a></li><li><a href="#modes">Capture modes</a></li><li><a href="#install">Install</a></li><li><a href="docs.html">Documentation</a></li></ul></div>
+      <div><h4>Product</h4><ul><li><a href="#features">Features</a></li><li><a href="#modes">Capture modes</a></li><li><a href="#install">Install</a></li><li><a href="/docs">Documentation</a></li></ul></div>
       <div><h4>Project</h4><ul><li><a href="https://github.com/apoorvdarshan/TetherShot" target="_blank" rel="noopener">GitHub</a></li><li><a href="https://www.npmjs.com/package/tethershot" target="_blank" rel="noopener">npm</a></li><li><a href="https://github.com/apoorvdarshan/TetherShot/issues" target="_blank" rel="noopener">Issues</a></li></ul></div>
-      <div><h4>Legal</h4><ul><li><a href="privacy.html">Privacy Policy</a></li><li><a href="terms.html">Terms of Use</a></li><li><a href="https://github.com/apoorvdarshan/TetherShot/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li></ul></div>
+      <div><h4>Legal</h4><ul><li><a href="/privacy">Privacy Policy</a></li><li><a href="/terms">Terms of Use</a></li><li><a href="https://github.com/apoorvdarshan/TetherShot/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li></ul></div>
     </div>
     <div class="footer-bottom">
       <span>© <span data-year>2026</span> Apoorv Darshan — MIT</span>
@@ -311,8 +311,6 @@ pymobiledevice3 lockdown \
 </footer>
 
 <script src="assets/app.js"></script>
-<script defer src="/_vercel/insights/script.js"></script>
-<script defer src="/_vercel/speed-insights/script.js"></script>
 
 </body>
 </html>

@@ -24,7 +24,7 @@ Sources/TetherShot/
   Storage/                FolderStore, Filename
   Diagnostics/            Log, Proc
 scripts/                  tunneld install/uninstall, npm postinstall
-web/                      marketing + docs site (deploys to Vercel)
+web/                      marketing + docs site (deploys to Cloudflare Pages)
 build.sh                  compiles + packages TetherShot.app (+ icon, version stamp)
 ```
 
@@ -45,14 +45,17 @@ For wireless work you'll also need `pip3 install -U pymobiledevice3` and a paire
 
 ### Editing the website
 
-The site is static HTML/CSS/JS in [`/web`](web). Preview it locally:
+The site is static HTML/CSS/JS in [`/web`](web). Preview it with Cloudflare Pages locally:
 
 ```bash
-python3 -m http.server 3001 --directory web
-# open http://localhost:3001
+wrangler pages dev web
 ```
 
-Only changes under `/web` trigger a Vercel deploy.
+Deploy the production site from the repository root with the checked-in Wrangler configuration:
+
+```bash
+wrangler pages deploy --branch main
+```
 
 ## Pull request workflow
 
