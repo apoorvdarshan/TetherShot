@@ -1,0 +1,11 @@
+{
+  "name": "tethershot-web",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.110.0"
+  }
+}

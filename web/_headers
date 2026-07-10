@@ -6,9 +6,3 @@
 
 /assets/*
   Cache-Control: public, max-age=3600, must-revalidate
-
-https://tethershot.pages.dev/*
-  X-Robots-Tag: noindex
-
-https://:version.tethershot.pages.dev/*
-  X-Robots-Tag: noindex
