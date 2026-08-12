@@ -5,18 +5,23 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="$(node -p "require('$ROOT_DIR/package.json').version")"
 DIST_DIR="$ROOT_DIR/dist"
 WORK_DIR="$DIST_DIR/dmg-work"
+ARM_BUILD_DIR="$DIST_DIR/swift-build-arm64"
+X64_BUILD_DIR="$DIST_DIR/swift-build-x86_64"
 APP="$WORK_DIR/TetherShot.app"
 CONTENTS="$APP/Contents"
 DMG="$DIST_DIR/TetherShot-${VERSION}-universal.dmg"
 IDENTITY="${DEVELOPER_ID_APPLICATION:-}"
 
 cd "$ROOT_DIR"
-swift build -c release --arch arm64 --arch x86_64
-BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/TetherShot"
+rm -rf "$ARM_BUILD_DIR" "$X64_BUILD_DIR"
+swift build -c release --arch arm64 --scratch-path "$ARM_BUILD_DIR"
+swift build -c release --arch x86_64 --scratch-path "$X64_BUILD_DIR"
+ARM_BIN="$(swift build -c release --arch arm64 --scratch-path "$ARM_BUILD_DIR" --show-bin-path)/TetherShot"
+X64_BIN="$(swift build -c release --arch x86_64 --scratch-path "$X64_BUILD_DIR" --show-bin-path)/TetherShot"
 
 rm -rf "$WORK_DIR"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources" "$WORK_DIR/volume"
-cp "$BIN" "$CONTENTS/MacOS/TetherShot"
+lipo -create "$ARM_BIN" "$X64_BIN" -output "$CONTENTS/MacOS/TetherShot"
 cp Resources/Info.plist "$CONTENTS/Info.plist"
 cp scripts/install-tunneld.sh scripts/uninstall-tunneld.sh "$CONTENTS/Resources/"
 chmod +x "$CONTENTS/MacOS/TetherShot" "$CONTENTS/Resources/"*.sh
@@ -74,5 +79,5 @@ if [[ "${NOTARIZE:-0}" == "1" ]]; then
 fi
 
 file "$CONTENTS/MacOS/TetherShot"
-rm -rf "$WORK_DIR"
+rm -rf "$WORK_DIR" "$ARM_BUILD_DIR" "$X64_BUILD_DIR"
 echo "$DMG"
