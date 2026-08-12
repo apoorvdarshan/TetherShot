@@ -14,6 +14,7 @@ struct MainWindow: View {
                     storageSection
                     backgroundSection
                     updatesSection
+                    projectSection
                 }
                 .padding(18)
             }
@@ -181,6 +182,28 @@ struct MainWindow: View {
         }
     }
 
+    private var projectSection: some View {
+        Panel(title: "Project & support", detail: "Open source") {
+            VStack(spacing: 0) {
+                ProjectLinkRow(icon: "globe", title: "TetherShot website", detail: "Documentation, privacy, and terms", url: ProjectLinks.website)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "chevron.left.forwardslash.chevron.right", title: "Open-source repository", detail: "View the code on GitHub", url: ProjectLinks.repository)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "shippingbox", title: "View on npm", detail: "Install the latest public release", url: ProjectLinks.npm)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "ladybug", title: "Report a bug", detail: "Open a GitHub issue", url: ProjectLinks.issues)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "doc.text", title: "MIT license", detail: "Read the open-source license", url: ProjectLinks.license)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "heart", title: "Support on Ko-fi", detail: "Sponsor development", url: ProjectLinks.koFi)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "person.crop.circle.badge.plus", title: "Follow @apoorvdarshan on X", detail: "Developer updates", url: ProjectLinks.x)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "megaphone", title: "View on Product Hunt", detail: "Follow the launch and leave feedback", url: ProjectLinks.productHunt)
+            }
+        }
+    }
+
     private var footer: some View {
         HStack(spacing: 12) {
             Image(systemName: statusIcon)
@@ -190,8 +213,9 @@ struct MainWindow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
             Spacer()
-            Link("GitHub", destination: URL(string: "https://github.com/apoorvdarshan/TetherShot")!)
-            Link("Support", destination: URL(string: "https://ko-fi.com/apoorvdarshan")!)
+            Text("TetherShot \(model.appVersion)")
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 11)
@@ -203,6 +227,39 @@ struct MainWindow: View {
         if model.lastStatus.hasPrefix("Error") { return "exclamationmark.triangle.fill" }
         if model.lastStatus.hasPrefix("Saved") { return "checkmark.circle.fill" }
         return "circle.fill"
+    }
+}
+
+private struct ProjectLinkRow: View {
+    let icon: String
+    let title: String
+    let detail: String
+    let url: URL
+
+    var body: some View {
+        Link(destination: url) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(TetherShotTheme.accent)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.system(size: 12.5, weight: .semibold))
+                    Text(detail)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 48)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
     }
 }
 

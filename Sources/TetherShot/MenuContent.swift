@@ -81,11 +81,12 @@ struct MenuContent: View {
 
         Divider()
 
-        Button("View Source on GitHub") { open("https://github.com/apoorvdarshan/TetherShot") }
-        Button("Report an Issue…") { open("https://github.com/apoorvdarshan/TetherShot/issues/new") }
-        Button("Vote on Product Hunt") { open("https://www.producthunt.com/products/tethershot") }
-        Button("Support on Ko-fi") { open("https://ko-fi.com/apoorvdarshan") }
-        Button("Follow @apoorvdarshan on X") { open("https://x.com/apoorvdarshan") }
+        Button("View Source on GitHub") { open(ProjectLinks.repository) }
+        Button("Report an Issue…") { open(ProjectLinks.issues) }
+        Button("MIT License") { open(ProjectLinks.license) }
+        Button("Vote on Product Hunt") { open(ProjectLinks.productHunt) }
+        Button("Support on Ko-fi") { open(ProjectLinks.koFi) }
+        Button("Follow @apoorvdarshan on X") { open(ProjectLinks.x) }
 
         Divider()
 
@@ -94,7 +95,7 @@ struct MenuContent: View {
             .keyboardShortcut("q")
     }
 
-    private func open(_ urlString: String) {
-        if let url = URL(string: urlString) { NSWorkspace.shared.open(url) }
+    private func open(_ url: URL) {
+        NSWorkspace.shared.open(url)
     }
 }
