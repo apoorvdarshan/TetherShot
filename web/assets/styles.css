@@ -309,7 +309,7 @@ details code, .prose code, .frow code { font-family: var(--mono); font-size: .85
 .app-shot figcaption { margin-top: 13px; color: var(--ink-3); text-align: center; font: .7rem var(--mono); letter-spacing: .1em; text-transform: uppercase; }
 
 /* Install choices ---------------------------------------------------- */
-.download-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: -20px 0 34px; }
+.download-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: -20px 0 34px; }
 .download-card { display: grid; grid-template-columns: auto 1fr auto; gap: 15px; align-items: center; padding: 20px; border: 1px solid var(--line-2); border-radius: 16px; background: var(--card); transition: border-color .2s, transform .2s, background .2s; }
 .download-card:hover { transform: translateY(-2px); border-color: var(--accent); background: rgba(154,99,255,.07); }
 .download-icon { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 12px; color: #fff; background: linear-gradient(135deg,var(--accent),var(--accent-2)); font: 1.1rem var(--mono); }
@@ -336,6 +336,7 @@ details code, .prose code, .frow code { font-family: var(--mono); font-size: .85
   .frow { grid-template-columns: 50px 1fr; }
   .frow .fdesc { grid-column: 2; }
   .doc-layout { grid-template-columns: 1fr; }
+  .download-grid { grid-template-columns: 1fr 1fr; }
   .sidebar { position: static; display: flex; flex-wrap: wrap; gap: 4px; border: 1px solid var(--line); padding: 14px; }
   .sidebar h4 { width: 100%; margin: 8px 0 4px; }
   .sidebar a { border-left: 0; }

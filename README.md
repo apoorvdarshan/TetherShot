@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/Swift-6.0-FA7343?logo=swift&logoColor=white" alt="Swift 6" />
   <img src="https://img.shields.io/badge/UI-SwiftUI-1575F9?logo=swift&logoColor=white" alt="SwiftUI" />
   <img src="https://img.shields.io/badge/iPhone-USB%20%2B%20Wi--Fi-5856D6?logo=apple&logoColor=white" alt="iPhone USB + Wi-Fi" />
+  <img src="https://img.shields.io/badge/Homebrew-Cask-FBB040?logo=homebrew&logoColor=black" alt="Homebrew Cask" />
   <img src="https://img.shields.io/npm/v/tethershot?logo=npm&label=npm&color=CB3837" alt="npm version" />
   <img src="https://img.shields.io/github/stars/apoorvdarshan/TetherShot?logo=github&color=FFCA28" alt="GitHub stars" />
   <img src="https://img.shields.io/badge/license-MIT-3DA639" alt="MIT License" />
@@ -21,13 +22,14 @@
 
 <p>
   <a href="https://tethershot.apoorvdarshan.com"><b>Website</b></a> ·
+  <a href="https://github.com/apoorvdarshan/homebrew-tap">Homebrew</a> ·
   <a href="https://www.npmjs.com/package/tethershot">npm</a> ·
   <a href="#installation">Install</a> ·
   <a href="https://tethershot.apoorvdarshan.com/docs.html">Docs</a> ·
   <a href="#support">Support</a>
 </p>
 
-<p><code>npm install -g tethershot</code></p>
+<p><code>brew install --cask apoorvdarshan/tap/tethershot</code></p>
 
 <br />
 
@@ -37,7 +39,7 @@
 
 ---
 
-> **Status — shipping.** USB + Wi-Fi capture, clipboard, global hotkey, per-device folders, npm install, and in-app self-update are all working. Built and tested on macOS 26 (Tahoe) with iOS 26.
+> **Status — shipping.** USB + Wi-Fi capture, clipboard, global hotkey, per-device folders, Homebrew and npm installs, and in-app self-update are all working. Built and tested on macOS 26 (Tahoe) with iOS 26.
 
 ## Why TetherShot
 
@@ -66,6 +68,16 @@ macOS already lets QuickTime/OBS mirror a tethered iPhone's *screen* (it appears
 
 ## Installation
 
+### Via Homebrew — recommended
+
+```bash
+brew install --cask apoorvdarshan/tap/tethershot
+```
+
+Homebrew downloads the checksum-verified, signed, and notarized universal DMG
+and installs TetherShot into `/Applications`. Future Cask versions follow the
+latest stable GitHub Release.
+
 ### Via DMG
 
 Download the signed, notarized universal DMG from the [latest GitHub release](https://github.com/apoorvdarshan/TetherShot/releases/latest), open it, and drag TetherShot into Applications. The same build runs natively on Apple silicon and Intel Macs and becomes the canonical `/Applications` copy.
@@ -80,7 +92,10 @@ tethershot                    # launch it
 
 This path **builds from source on your machine** and lands in `~/Applications` (no sudo). If a signed `/Applications/TetherShot.app` already exists, the CLI preserves it instead of replacing its Developer ID signature with a local build.
 
-Both methods use the same bundle identity and settings. If you install the DMG after using npm, the `/Applications` copy becomes canonical and the stale `~/Applications` copy is moved to Trash on launch. Future in-app updates replace that canonical copy in place.
+All installation methods use the same bundle identity and settings. Homebrew and
+the DMG install the canonical `/Applications` copy. If you install either after
+using npm, the stale `~/Applications` copy is moved to Trash on launch. Future
+in-app updates replace that canonical copy in place.
 
 > npm 11+ blocks `postinstall` scripts by default, so if the app isn't built after `npm install`, the explicit `tethershot install` step always does it.
 
