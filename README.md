@@ -166,6 +166,16 @@ If TetherShot is useful to you:
 - ☕ **[Support on Ko-fi](https://ko-fi.com/apoorvdarshan)**
 - 🐦 **Follow [@apoorvdarshan](https://x.com/apoorvdarshan)** on X
 
+## Star History
+
+<a href="https://github.com/apoorvdarshan/TetherShot/stargazers">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://tethershot.apoorvdarshan.com/api/star-history.svg?theme=dark&amp;v=1" />
+    <source media="(prefers-color-scheme: light)" srcset="https://tethershot.apoorvdarshan.com/api/star-history.svg?theme=light&amp;v=1" />
+    <img alt="TetherShot GitHub star history" src="https://tethershot.apoorvdarshan.com/api/star-history.svg?theme=light&amp;v=1" />
+  </picture>
+</a>
+
 ## License
 
 [MIT](LICENSE) © 2026 [Apoorv Darshan](https://github.com/apoorvdarshan)

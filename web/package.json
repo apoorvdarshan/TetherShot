@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "build": "node build.mjs",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test": "node --test worker/*.test.mjs"
   },
   "devDependencies": {
     "wrangler": "4.110.0"
