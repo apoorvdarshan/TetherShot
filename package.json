@@ -1,13 +1,13 @@
 {
   "name": "tethershot",
-  "version": "1.0.5",
-  "description": "Menu-bar app that screenshots your iPhone (USB + Wi-Fi) straight into a folder you choose. Native Swift + AVFoundation + pymobiledevice3.",
+  "version": "1.0.6",
+  "description": "Native macOS app for pixel-perfect iPhone screenshots over USB or Wi-Fi, saved locally and copied to your clipboard.",
   "bin": {
     "tethershot": "bin/tethershot.js"
   },
   "scripts": {
     "postinstall": "node scripts/npm-postinstall.js",
-    "version": "/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString $npm_package_version\" Resources/Info.plist && git add Resources/Info.plist"
+    "version": "/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString $npm_package_version\" Resources/Info.plist && /usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $npm_package_version\" Resources/Info.plist && git add Resources/Info.plist"
   },
   "files": [
     "bin/",
@@ -27,7 +27,7 @@
     "type": "git",
     "url": "git+https://github.com/apoorvdarshan/TetherShot.git"
   },
-  "homepage": "https://github.com/apoorvdarshan/TetherShot#readme",
+  "homepage": "https://tethershot.apoorvdarshan.com",
   "bugs": {
     "url": "https://github.com/apoorvdarshan/TetherShot/issues"
   },

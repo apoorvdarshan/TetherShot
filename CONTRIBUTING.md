@@ -26,6 +26,7 @@ Sources/TetherShot/
   Diagnostics/            Log, Proc
 scripts/                  tunneld install/uninstall, npm postinstall
 script/build_and_run.sh   canonical local build, install, and launch entry point
+script/build_dmg.sh       universal DMG build; optional signing + notarization
 web/                      marketing + docs site (deploys to Cloudflare Pages)
 functions/                Pages middleware (redirects the default hostname)
 build.sh                  packages .build/TetherShot.app (+ icon, version stamp)
@@ -66,6 +67,24 @@ wrangler pages deploy --branch main
 2. Make your change. Keep it focused — one logical change per PR.
 3. Make sure it builds cleanly: `swift build` (no errors **or** warnings) and `./build.sh`.
 4. Open a PR describing **what** changed and **why**, with before/after notes or screenshots where useful.
+
+## Packaging a DMG
+
+Build a local, ad-hoc signed universal test image with:
+
+```bash
+./script/build_dmg.sh
+```
+
+Release builds set `DEVELOPER_ID_APPLICATION` and `NOTARIZE=1`, plus `APPLE_ID`, `APPLE_TEAM_ID`, and `APPLE_APP_PASSWORD`. The tag workflow imports the Developer ID certificate, notarizes the DMG, publishes npm, and attaches the DMG to the matching GitHub release. A tag must exactly match `package.json` (for example `v1.0.6`).
+
+Configure these GitHub Actions secrets before tagging:
+
+- `DEVELOPER_ID_APPLICATION_P12` — base64-encoded Developer ID Application certificate and private key.
+- `DEVELOPER_ID_APPLICATION_PASSWORD` — password used when exporting that P12.
+- `DEVELOPER_ID_APPLICATION_NAME` — full signing identity shown by `security find-identity -v -p codesigning`.
+- `APPLE_ID`, `APPLE_TEAM_ID`, and `APPLE_APP_PASSWORD` — notarization credentials.
+- `NPM_TOKEN` — npm Automation token used for the matching package publish.
 
 ## Code style
 

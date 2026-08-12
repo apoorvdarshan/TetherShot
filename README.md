@@ -31,7 +31,7 @@
 
 <br />
 
-<img src="https://raw.githubusercontent.com/apoorvdarshan/TetherShot/main/web/assets/og.jpg" width="760" alt="TetherShot preview" />
+<img src="https://raw.githubusercontent.com/apoorvdarshan/TetherShot/main/web/assets/og-v106.jpg" width="760" alt="TetherShot capture beam preview" />
 
 </div>
 
@@ -59,14 +59,18 @@ macOS already lets QuickTime/OBS mirror a tethered iPhone's *screen* (it appears
 ## Requirements
 
 - **macOS 14 (Sonoma)+** — developed/tested on macOS 26 (Tahoe)
-- **Xcode Command Line Tools** — `xcode-select --install` (needed to build from source)
-- **Node.js 18+** — to install via npm
+- **Xcode Command Line Tools** — only needed to build from source (`xcode-select --install`)
+- **Node.js 18+** — only needed for npm installation
 - An **iPhone** you can set to *Trust This Computer*
 - For Wi-Fi: iPhone + Mac on the same network, plus [`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3)
 
 ## Installation
 
-### Via npm (recommended)
+### Via DMG
+
+Download the signed, notarized universal DMG from the [latest GitHub release](https://github.com/apoorvdarshan/TetherShot/releases/latest), open it, and drag TetherShot into Applications. The same build runs natively on Apple silicon and Intel Macs.
+
+### Via npm
 
 ```bash
 npm install -g tethershot     # installs the CLI (and builds the app)
@@ -74,7 +78,7 @@ tethershot install            # ensure the app is built into ~/Applications
 tethershot                    # launch it
 ```
 
-It **builds from source on your machine**, so the app gets **no Gatekeeper quarantine** — it just runs, no "unidentified developer" wall, no notarization. It lands in `~/Applications` (no sudo).
+This path **builds from source on your machine** and lands in `~/Applications` (no sudo).
 
 > npm 11+ blocks `postinstall` scripts by default, so if the app isn't built after `npm install`, the explicit `tethershot install` step always does it.
 

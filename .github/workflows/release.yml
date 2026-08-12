@@ -3,12 +3,12 @@
 # Trigger: pushing a tag like `v1.0.6` (which `npm version <patch|minor|major>`
 # creates for you). On that tag the workflow:
 #   1. verifies the tag matches package.json's version (catches a mis-pushed tag),
-#   2. publishes the package to npm, and
-#   3. creates the matching GitHub Release with auto-generated notes.
+#   2. builds, Developer ID-signs, and notarizes a universal DMG,
+#   3. publishes the package to npm, and
+#   4. creates the matching GitHub Release with the DMG attached.
 #
-# One-time setup: add an npm **Automation** access token as the repo secret
-# NPM_TOKEN (Settings ▸ Secrets and variables ▸ Actions ▸ New repository secret).
-# An Automation token is required because it bypasses npm's publish 2FA in CI.
+# One-time setup: add NPM_TOKEN plus the Developer ID and Apple notarization
+# secrets documented in CONTRIBUTING.md.
 name: Release
 
 on:
@@ -26,9 +26,7 @@ permissions:
   id-token: write # npm provenance (signed, verifiable publish)
 
 jobs:
-  release:
-    # Source-only package (it compiles on the user's Mac at install time), so a
-    # plain Linux runner can publish the tarball — no Swift build needed here.
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,12 +46,83 @@ jobs:
             exit 1
           fi
 
+  dmg:
+    needs: validate
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require signing and notarization secrets
+        env:
+          CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_APPLICATION_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_APPLICATION_PASSWORD }}
+          DEVELOPER_ID_APPLICATION_NAME: ${{ secrets.DEVELOPER_ID_APPLICATION_NAME }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          for name in CERTIFICATE_P12 CERTIFICATE_PASSWORD DEVELOPER_ID_APPLICATION_NAME APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD; do
+            test -n "${!name}" || { echo "::error::Missing required secret: $name"; exit 1; }
+          done
+
+      - name: Import Developer ID Application certificate
+        env:
+          CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_APPLICATION_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_APPLICATION_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/tethershot.keychain-db"
+          CERTIFICATE="$RUNNER_TEMP/developer-id.p12"
+          echo "$CERTIFICATE_P12" | /usr/bin/base64 -D > "$CERTIFICATE"
+          security create-keychain -p actions "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p actions "$KEYCHAIN"
+          security import "$CERTIFICATE" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple: -s -k actions "$KEYCHAIN"
+
+      - name: Build, sign, and notarize universal DMG
+        env:
+          DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION_NAME }}
+          NOTARIZE: "1"
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          test -n "$DEVELOPER_ID_APPLICATION" || { echo "::error::Missing DEVELOPER_ID_APPLICATION_NAME"; exit 1; }
+          ./script/build_dmg.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tethershot-dmg
+          path: dist/TetherShot-*-universal.dmg
+          if-no-files-found: error
+
+  publish-npm:
+    needs: dmg
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
       - name: Publish to npm
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+  release:
+    needs: [dmg, publish-npm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tethershot-dmg
+          path: dist
+
       - name: Create GitHub Release
-        run: gh release create "$GITHUB_REF_NAME" --title "TetherShot $GITHUB_REF_NAME" --generate-notes --verify-tag --latest
+        run: gh release create "$GITHUB_REF_NAME" dist/*.dmg --title "TetherShot $GITHUB_REF_NAME" --generate-notes --verify-tag --latest
         env:
           GH_TOKEN: ${{ github.token }}

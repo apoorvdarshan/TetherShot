@@ -16,6 +16,7 @@ Package.resolved
 # npm
 node_modules/
 *.tgz
+/dist/
 # .npmrc holds the publish auth line; never commit it
 .npmrc
 

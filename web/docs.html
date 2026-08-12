@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="assets/favicon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Archivo:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <link rel="canonical" href="https://tethershot.apoorvdarshan.com/docs" />
 <meta name="author" content="Apoorv Darshan" />
 <meta name="robots" content="index, follow" />
@@ -20,7 +20,7 @@
 <meta property="og:url" content="https://tethershot.apoorvdarshan.com/docs" />
 <meta property="og:title" content="Documentation — TetherShot" />
 <meta property="og:description" content="Install TetherShot, set up USB and Wi-Fi capture, CLI reference, options, and troubleshooting." />
-<meta property="og:image" content="https://tethershot.apoorvdarshan.com/assets/og.jpg" />
+<meta property="og:image" content="https://tethershot.apoorvdarshan.com/assets/og-v106.jpg" />
 <meta property="og:image:type" content="image/jpeg" />
 <meta property="og:image:alt" content="TetherShot — screenshot your iPhone from the Mac menu bar" />
 <meta property="og:image:width" content="1200" />
@@ -30,7 +30,7 @@
 <meta name="twitter:creator" content="@apoorvdarshan" />
 <meta name="twitter:title" content="Documentation — TetherShot" />
 <meta name="twitter:description" content="Install TetherShot, set up USB and Wi-Fi capture, CLI reference, options, and troubleshooting." />
-<meta name="twitter:image" content="https://tethershot.apoorvdarshan.com/assets/og.jpg" />
+<meta name="twitter:image" content="https://tethershot.apoorvdarshan.com/assets/og-v106.jpg" />
 <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
@@ -77,27 +77,31 @@
 
   <article class="prose">
     <h1>Documentation</h1>
-    <p class="updated">TetherShot · macOS menu-bar app · MIT licensed</p>
+    <p class="updated">TetherShot · native macOS utility · MIT licensed</p>
 
     <h2 id="overview">Overview</h2>
-    <p>TetherShot is a native macOS menu-bar app that captures <strong>pixel-perfect screenshots of an iPhone</strong> and saves them to a folder you choose (optionally copying each to your clipboard). It supports two capture paths:</p>
+    <p>TetherShot is a native macOS app with an optional menu-bar controller. It captures <strong>pixel-perfect screenshots of an iPhone</strong> and saves them to a folder you choose (optionally copying each to your clipboard). It supports two capture paths:</p>
     <ul>
       <li><strong>USB</strong> — a trusted, cabled iPhone is exposed to macOS as a screen source via AVFoundation. Instant, no extra setup.</li>
       <li><strong>Wi-Fi</strong> — cable-free capture over your local network using Apple's developer-services tunnel (powered by <a href="https://github.com/doronz88/pymobiledevice3" target="_blank" rel="noopener">pymobiledevice3</a>). Requires a one-time setup.</li>
     </ul>
-    <p>The app runs as a background agent — no Dock icon, just a menu-bar glyph.</p>
+    <p>TetherShot opens as a compact Mac app with an optional menu-bar control. Closing its window removes the Dock icon while capture, updates, and the global hotkey keep running in the background.</p>
 
     <h2 id="requirements">Requirements</h2>
     <ul>
       <li><strong>macOS 14 (Sonoma) or later</strong> — developed and tested on macOS 26 (Tahoe).</li>
-      <li><strong>Xcode Command Line Tools</strong> — needed to build from source: <code>xcode-select --install</code>.</li>
-      <li><strong>Node.js 18+</strong> — to install via npm.</li>
+      <li><strong>Xcode Command Line Tools</strong> — only needed to build from source: <code>xcode-select --install</code>.</li>
+      <li><strong>Node.js 18+</strong> — only needed for npm installation.</li>
       <li>An <strong>iPhone</strong> you can set to <em>Trust This Computer</em>.</li>
       <li>For Wi-Fi: the iPhone and Mac on the <strong>same network</strong>, plus <a href="https://github.com/doronz88/pymobiledevice3" target="_blank" rel="noopener">pymobiledevice3</a>.</li>
     </ul>
 
     <h2 id="install">Install</h2>
-    <p>The recommended path is npm. TetherShot builds from source on your machine — a locally compiled app gets no Gatekeeper quarantine, so it launches with no “unidentified developer” warning.</p>
+    <p>For a normal Mac install, download the signed and notarized universal DMG from the latest GitHub release and drag TetherShot into Applications. Developers can use npm for the CLI and source-built workflow.</p>
+    <div class="code">
+      <div class="code-head">via DMG</div>
+<pre>open https://github.com/apoorvdarshan/TetherShot/releases/latest</pre>
+    </div>
     <div class="code">
       <div class="code-head">via npm</div>
 <pre>npm install -g <span class="k">tethershot</span>   <span class="c"># links the CLI (and builds the app)</span>
@@ -111,7 +115,7 @@
 <pre>git clone https://github.com/apoorvdarshan/TetherShot.git
 cd TetherShot
 ./build.sh             <span class="c"># compiles + packages TetherShot.app</span>
-open TetherShot.app</pre>
+open .build/TetherShot.app</pre>
     </div>
 
     <h2 id="first-capture">First capture (USB)</h2>
