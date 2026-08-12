@@ -50,7 +50,7 @@ macOS already lets QuickTime/OBS mirror a tethered iPhone's *screen* (it appears
 - 📋 **Clipboard** — every capture is copied, ready to paste (toggle on by default).
 - ⌨️ **Global hotkey** — press <kbd>⌘⇧7</kbd> anywhere to capture every connected device.
 - 🗂️ **Your folder, your rules** — any destination, timestamped filenames, optional per-device subfolders.
-- ⬆️ **Self-updating** — in-app **Check for Updates** pulls the latest from npm, rebuilds, and relaunches.
+- ⬆️ **Self-updating** — in-app **Check for Updates** downloads the signed, notarized GitHub release, verifies it, replaces the current app in place, and relaunches.
 - 🪟 **Compact Mac app** — open it from Applications or Spotlight; closing the window keeps capture running and removes the Dock icon.
 - 🍥 **Optional menu-bar control** — enabled by default for quick capture and settings, and can be hidden persistently.
 - 🚀 **Launch at login** — keeps capture and the global hotkey ready in the background.
@@ -68,7 +68,7 @@ macOS already lets QuickTime/OBS mirror a tethered iPhone's *screen* (it appears
 
 ### Via DMG
 
-Download the signed, notarized universal DMG from the [latest GitHub release](https://github.com/apoorvdarshan/TetherShot/releases/latest), open it, and drag TetherShot into Applications. The same build runs natively on Apple silicon and Intel Macs.
+Download the signed, notarized universal DMG from the [latest GitHub release](https://github.com/apoorvdarshan/TetherShot/releases/latest), open it, and drag TetherShot into Applications. The same build runs natively on Apple silicon and Intel Macs and becomes the canonical `/Applications` copy.
 
 ### Via npm
 
@@ -78,7 +78,9 @@ tethershot install            # ensure the app is built into ~/Applications
 tethershot                    # launch it
 ```
 
-This path **builds from source on your machine** and lands in `~/Applications` (no sudo).
+This path **builds from source on your machine** and lands in `~/Applications` (no sudo). If a signed `/Applications/TetherShot.app` already exists, the CLI preserves it instead of replacing its Developer ID signature with a local build.
+
+Both methods use the same bundle identity and settings. If you install the DMG after using npm, the `/Applications` copy becomes canonical and the stale `~/Applications` copy is moved to Trash on launch. Future in-app updates replace that canonical copy in place.
 
 > npm 11+ blocks `postinstall` scripts by default, so if the app isn't built after `npm install`, the explicit `tethershot install` step always does it.
 
@@ -105,7 +107,7 @@ Open TetherShot from Applications or Spotlight, or click its menu-bar icon, then
 | **Choose Folder…** | Pick any destination; remembered across launches |
 | **Show in Menu Bar** | Keep quick controls in the menu bar (default on) |
 | **Launch at Login** | Keep TetherShot available across reboots |
-| **Check for Updates** | Update via npm and relaunch |
+| **Check for Updates** | Verify the latest signed GitHub DMG, replace the current app, and relaunch |
 
 ## Wireless (Wi-Fi) setup — one time
 
@@ -142,7 +144,7 @@ tethershot version    # print the installed version
 |---|---|
 | `USBCapture` | Flips the CoreMediaIO screen-capture flag, finds the iPhone as a `.muxed` device, grabs one frame → PNG |
 | `WirelessCapture` | Talks to the `tunneld` HTTP API, runs `pymobiledevice3 developer dvt screenshot` over the Wi-Fi tunnel |
-| `Updater` | Checks the npm registry, runs `npm install -g tethershot@latest`, relaunches via a detached helper |
+| `Updater` | Checks GitHub Releases, verifies the asset digest and Developer ID signature, then atomically replaces and relaunches the current app |
 | `AppModel` | Main-actor state: device list, destination folder, options, status |
 | `MainWindow` / `MenuContent` | Compact SwiftUI app window plus optional `MenuBarExtra` controls |
 | `TetherShotApp` | Window lifecycle: closing hides the Dock presence while background capture stays alive |

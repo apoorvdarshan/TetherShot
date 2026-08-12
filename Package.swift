@@ -11,6 +11,11 @@ let package = Package(
             // Swift 5 concurrency rules keep the AVFoundation delegate/continuation
             // plumbing simple; revisit when we add the wireless backend.
             swiftSettings: [.swiftLanguageMode(.v5)]
-        )
+        ),
+        .testTarget(
+            name: "TetherShotTests",
+            dependencies: ["TetherShot"],
+            path: "Tests/TetherShotTests"
+        ),
     ]
 )

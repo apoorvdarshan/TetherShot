@@ -154,12 +154,12 @@ struct MainWindow: View {
     private var updatesSection: some View {
         Panel(title: "Updates", detail: "Installed version \(model.appVersion)") {
             VStack(spacing: 0) {
-                SettingRow(icon: "arrow.triangle.2.circlepath", title: "Automatically Check", detail: "Look for newer npm releases") {
+                SettingRow(icon: "arrow.triangle.2.circlepath", title: "Automatically Check", detail: "Look for signed GitHub releases") {
                     Toggle("", isOn: Binding(get: { model.autoCheckForUpdates }, set: { model.setAutoCheckForUpdates($0) }))
                         .labelsHidden().toggleStyle(.switch)
                 }
                 Divider().padding(.leading, 48)
-                SettingRow(icon: "arrow.down.app", title: "Install Automatically", detail: "Build, install, and relaunch when an update appears") {
+                SettingRow(icon: "arrow.down.app", title: "Install Automatically", detail: "Verify, replace, and relaunch when an update appears") {
                     Toggle("", isOn: Binding(get: { model.autoInstallUpdates }, set: { model.setAutoInstallUpdates($0) }))
                         .labelsHidden().toggleStyle(.switch)
                 }

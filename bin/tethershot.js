@@ -9,8 +9,24 @@ const os = require('os');
 const path = require('path');
 
 const PKG = 'tethershot';
-const APP = path.join(os.homedir(), 'Applications', 'TetherShot.app');
+const SYSTEM_APP = '/Applications/TetherShot.app';
+const USER_APP = path.join(os.homedir(), 'Applications', 'TetherShot.app');
 const scripts = path.join(__dirname, '..', 'scripts');
+
+function isTetherShot(candidate) {
+  const info = path.join(candidate, 'Contents', 'Info.plist');
+  if (!fs.existsSync(info)) return false;
+  try {
+    return execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Print :CFBundleIdentifier', info], { encoding: 'utf8' }).trim()
+      === 'com.apoorvdarshan.tethershot';
+  } catch (_) {
+    return false;
+  }
+}
+
+function appPath() {
+  return isTetherShot(SYSTEM_APP) ? SYSTEM_APP : USER_APP;
+}
 
 function run(file, args) { execFileSync(file, args, { stdio: 'inherit' }); }
 function quiet(file, args) { try { execFileSync(file, args, { stdio: 'ignore' }); } catch (_) {} }
@@ -20,12 +36,15 @@ const cmd = (process.argv[2] || 'launch').toLowerCase();
 switch (cmd) {
   case 'launch':
   case 'open':
+    {
+    const APP = appPath();
     if (!fs.existsSync(APP)) {
-      console.error('TetherShot.app not found in ~/Applications. Run:  tethershot install');
+      console.error('TetherShot.app not found in Applications. Run:  tethershot install');
       process.exit(1);
     }
     run('/usr/bin/open', [APP]);
     break;
+    }
 
   case 'install':
   case 'build':
@@ -35,9 +54,12 @@ switch (cmd) {
   case 'update':
     console.log('Updating ' + PKG + ' to the latest version…');
     run('npm', ['install', '-g', PKG + '@latest']);
-    console.log('Relaunching…');
+    if (isTetherShot(SYSTEM_APP)) {
+      console.log('The signed /Applications copy is preserved. Use Check for Updates in TetherShot to update the app.');
+    }
+    console.log('Relaunching the canonical installation…');
     quiet('/usr/bin/pkill', ['-x', 'TetherShot']);
-    run('/usr/bin/open', ['-n', APP]);
+    run('/usr/bin/open', ['-n', appPath()]);
     break;
 
   case 'setup-wifi':
@@ -46,8 +68,11 @@ switch (cmd) {
 
   case 'uninstall':
     quiet('/usr/bin/pkill', ['-x', 'TetherShot']);
-    quiet('/bin/rm', ['-rf', APP]);
-    console.log('Removed ' + APP);
+    quiet('/bin/rm', ['-rf', USER_APP]);
+    console.log('Removed ' + USER_APP);
+    if (isTetherShot(SYSTEM_APP)) {
+      console.log('The signed copy remains at ' + SYSTEM_APP + '; move it to Trash in Finder to remove it.');
+    }
     console.log('To remove the Wi-Fi tunnel service:  bash ' + path.join(scripts, 'uninstall-tunneld.sh'));
     break;
 

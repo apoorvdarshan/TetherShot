@@ -163,11 +163,11 @@ pymobiledevice3 lockdown wifi-connections --state on</pre>
       <li><strong>Choose Folder…</strong> — pick any destination; the choice is remembered.</li>
       <li><strong>Quick capture</strong> — press <span class="kbd">⌘⇧7</span> anywhere to capture every connected device without opening the menu.</li>
       <li><strong>Launch at Login</strong> — keep TetherShot in your menu bar across reboots.</li>
-      <li><strong>Auto-check for Updates</strong> — quietly check npm for newer versions.</li>
+      <li><strong>Auto-check for Updates</strong> — quietly check GitHub for newer signed releases.</li>
     </ul>
 
     <h2 id="updating">Updating</h2>
-    <p>Use <strong>Check for Updates…</strong> in the menu, then <strong>Update &amp; Relaunch</strong> — it runs <code>npm install -g tethershot@latest</code>, rebuilds, and relaunches itself. Or from the terminal:</p>
+    <p>Use <strong>Check for Updates…</strong> in the menu, then <strong>Update &amp; Relaunch</strong>. TetherShot downloads the signed and notarized universal DMG, verifies its GitHub SHA-256 digest and Developer ID signature, replaces the current installation in place, and relaunches. Node.js and Xcode are not required for normal updates. CLI users can still update the optional command separately:</p>
     <div class="code"><div class="code-head">terminal</div><pre><span class="k">tethershot</span> update</pre></div>
     <p class="note"><b>Heads-up:</b> the from-source build is ad-hoc signed, which isn't stable across rebuilds, so an update may re-trigger the one-time Camera permission prompt.</p>
 

@@ -219,7 +219,7 @@ final class AppModel: ObservableObject {
             lastStatus = "Finish the current capture before updating."
             return
         }
-        lastStatus = "Updating… (recompiling, ~1 min)"
+        lastStatus = "Downloading and verifying the signed update…"
         Task {
             let (ok, message) = await updater.installUpdate()
             if ok {

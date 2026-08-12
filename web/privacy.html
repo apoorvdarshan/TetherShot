@@ -91,11 +91,11 @@
     <p>TetherShot makes network connections only in these clearly-bounded cases, and never to any service operated by us:</p>
     <ul>
       <li><strong>Wi-Fi capture</strong> — to your iPhone, over your local network, via the developer-services tunnel. The image data stays between your Mac and your phone.</li>
-      <li><strong>Update checks</strong> — if you enable “Auto-check for Updates,” the app requests the latest version number from the public <a href="https://registry.npmjs.org" target="_blank" rel="noopener">npm registry</a>. This is a standard read request and sends no personal data. You can turn it off.</li>
+      <li><strong>Update checks</strong> — if you enable “Auto-check for Updates,” the app requests the latest release metadata from the public <a href="https://github.com/apoorvdarshan/TetherShot/releases" target="_blank" rel="noopener">GitHub repository</a>. Installing an update downloads the signed, notarized DMG from GitHub and verifies its digest and Developer ID signature. These are standard requests and send no personal data. You can turn automatic checks off.</li>
     </ul>
 
     <h2 id="third-parties">Third-party tools</h2>
-    <p>Wi-Fi capture relies on <a href="https://github.com/doronz88/pymobiledevice3" target="_blank" rel="noopener">pymobiledevice3</a>, an open-source tool you install yourself. Installation and updates use <a href="https://www.npmjs.com/" target="_blank" rel="noopener">npm</a>. Those projects have their own policies; TetherShot does not transmit your data to them.</p>
+    <p>Wi-Fi capture relies on <a href="https://github.com/doronz88/pymobiledevice3" target="_blank" rel="noopener">pymobiledevice3</a>, an open-source tool you install yourself. The optional CLI/source workflow uses <a href="https://www.npmjs.com/" target="_blank" rel="noopener">npm</a>; normal app updates use GitHub Releases. Those projects have their own policies; TetherShot does not transmit your screenshots to them.</p>
 
     <h2 id="children">Children &amp; jurisdiction</h2>
     <p>TetherShot is a developer utility with no data collection, so it carries no special data-handling obligations. Because nothing is collected or transmitted to us, there is no personal data for us to access, retain, export, or delete.</p>

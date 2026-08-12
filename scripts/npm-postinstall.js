@@ -2,9 +2,8 @@
 'use strict';
 
 // Runs on `npm install`. Builds TetherShot from source and installs the .app
-// into ~/Applications. Building locally (vs. shipping a prebuilt binary) means
-// the bundle never gets a com.apple.quarantine attribute, so Gatekeeper does
-// not block it — no notarization needed.
+// into ~/Applications. A signed DMG copy in /Applications is canonical and is
+// deliberately never overwritten with this local ad-hoc build.
 
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -17,6 +16,24 @@ if (process.platform !== 'darwin') {
 }
 
 const pkgRoot = path.resolve(__dirname, '..');
+const systemApp = '/Applications/TetherShot.app';
+
+function isTetherShot(appPath) {
+  const info = path.join(appPath, 'Contents', 'Info.plist');
+  if (!fs.existsSync(info)) return false;
+  try {
+    return execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Print :CFBundleIdentifier', info], { encoding: 'utf8' }).trim()
+      === 'com.apoorvdarshan.tethershot';
+  } catch (_) {
+    return false;
+  }
+}
+
+if (isTetherShot(systemApp)) {
+  console.log('\n[TetherShot] Preserving the signed installation at ' + systemApp);
+  console.log('[TetherShot] Use Check for Updates in the app to install signed releases.\n');
+  process.exit(0);
+}
 
 // Resolve the invoking user's real home, even if run under `sudo npm install`.
 function realHome() {

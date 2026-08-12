@@ -35,6 +35,11 @@ struct TetherShotApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private weak var mainWindow: NSWindow?
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        if AppInstallation.relaunchCanonicalCopyIfNeeded() { return }
+        AppInstallation.archiveDuplicateUserCopyIfNeeded()
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
