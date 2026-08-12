@@ -135,3 +135,4 @@ jobs:
         run: gh release create "$GITHUB_REF_NAME" dist/*.dmg --title "TetherShot $GITHUB_REF_NAME" --generate-notes --verify-tag --latest
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
