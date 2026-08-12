@@ -3,8 +3,13 @@ import SwiftUI
 /// The menu shown when the user clicks the TetherShot status-bar icon.
 struct MenuContent: View {
     @ObservedObject var model: AppModel
+    let showMainWindow: () -> Void
 
     var body: some View {
+        Button("Show TetherShot") { showMainWindow() }
+
+        Divider()
+
         if model.devices.isEmpty {
             Text("No iPhone detected")
         } else {
@@ -47,6 +52,10 @@ struct MenuContent: View {
         Toggle("Launch at Login", isOn: Binding(
             get: { model.launchAtLogin },
             set: { model.setLaunchAtLogin($0) }
+        ))
+        Toggle("Show in Menu Bar", isOn: Binding(
+            get: { model.showInMenuBar },
+            set: { model.setShowInMenuBar($0) }
         ))
 
         Divider()

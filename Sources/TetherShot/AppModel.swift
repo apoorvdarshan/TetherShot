@@ -14,6 +14,7 @@ final class AppModel: ObservableObject {
     @Published var launchAtLogin = LaunchAtLogin.isEnabled
     @Published var organizeByDevice = UserDefaults.standard.bool(forKey: "organizeByDevice")
     @Published var copyToClipboard = (UserDefaults.standard.object(forKey: "copyToClipboard") as? Bool) ?? true
+    @Published var showInMenuBar = (UserDefaults.standard.object(forKey: "showInMenuBar") as? Bool) ?? true
     @Published var autoCheckForUpdates = (UserDefaults.standard.object(forKey: "autoCheckForUpdates") as? Bool) ?? true
     @Published var autoInstallUpdates = (UserDefaults.standard.object(forKey: "autoInstallUpdates") as? Bool) ?? false
     @Published var availableUpdate: String?
@@ -165,6 +166,14 @@ final class AppModel: ObservableObject {
     func setCopyToClipboard(_ enabled: Bool) {
         copyToClipboard = enabled
         UserDefaults.standard.set(enabled, forKey: "copyToClipboard")
+    }
+
+    func setShowInMenuBar(_ enabled: Bool) {
+        showInMenuBar = enabled
+        UserDefaults.standard.set(enabled, forKey: "showInMenuBar")
+        lastStatus = enabled
+            ? "Menu-bar icon enabled."
+            : "Menu-bar icon hidden. Reopen TetherShot from Applications or Spotlight."
     }
 
     func setAutoCheckForUpdates(_ enabled: Bool) {

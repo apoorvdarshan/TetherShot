@@ -4,7 +4,7 @@
 
 <h1>TetherShot</h1>
 
-<strong>Screenshot your iPhone, straight from the Mac menu bar.</strong>
+<strong>Screenshot your iPhone from a compact Mac app or the menu bar.</strong>
 
 <p>USB or Wi-Fi · pixel-perfect captures · saved to a folder you choose · copied to your clipboard.</p>
 
@@ -51,7 +51,9 @@ macOS already lets QuickTime/OBS mirror a tethered iPhone's *screen* (it appears
 - ⌨️ **Global hotkey** — press <kbd>⌘⇧7</kbd> anywhere to capture every connected device.
 - 🗂️ **Your folder, your rules** — any destination, timestamped filenames, optional per-device subfolders.
 - ⬆️ **Self-updating** — in-app **Check for Updates** pulls the latest from npm, rebuilds, and relaunches.
-- 🚀 **Launch at login**, runs as a background menu-bar agent (no Dock icon).
+- 🪟 **Compact Mac app** — open it from Applications or Spotlight; closing the window keeps capture running and removes the Dock icon.
+- 🍥 **Optional menu-bar control** — enabled by default for quick capture and settings, and can be hidden persistently.
+- 🚀 **Launch at login** — keeps capture and the global hotkey ready in the background.
 - 🔒 **Local-first** — no account, no analytics, no servers. Screenshots never leave your Mac.
 
 ## Requirements
@@ -82,14 +84,14 @@ It **builds from source on your machine**, so the app gets **no Gatekeeper quara
 git clone https://github.com/apoorvdarshan/TetherShot.git
 cd TetherShot
 ./build.sh             # compiles + packages TetherShot.app
-open TetherShot.app     # launches the menu-bar agent
+open TetherShot.app     # launches the app and menu-bar control
 ```
 
 On first USB capture, macOS asks for **Camera** permission — expected: the iPhone screen is delivered through the AVFoundation (camera) privacy bucket. TetherShot never uses your Mac's camera.
 
 ## Usage
 
-Click the menu-bar icon → pick your phone → the PNG saves to your folder (default `~/Pictures/TetherShot`) and copies to your clipboard. Or just press the hotkey.
+Open TetherShot from Applications or Spotlight, or click its menu-bar icon, then pick your phone. The PNG saves to your folder (default `~/Pictures/TetherShot`) and copies to your clipboard. Closing the window leaves capture and the global hotkey active in the background; open TetherShot again to bring the window back.
 
 | Option | What it does |
 |---|---|
@@ -97,7 +99,8 @@ Click the menu-bar icon → pick your phone → the PNG saves to your folder (de
 | **Copy to Clipboard** | Also place each capture on the clipboard (default on) |
 | **Organize by Device** | Save into a per-device subfolder |
 | **Choose Folder…** | Pick any destination; remembered across launches |
-| **Launch at Login** | Keep TetherShot in your menu bar across reboots |
+| **Show in Menu Bar** | Keep quick controls in the menu bar (default on) |
+| **Launch at Login** | Keep TetherShot available across reboots |
 | **Check for Updates** | Update via npm and relaunch |
 
 ## Wireless (Wi-Fi) setup — one time
@@ -137,7 +140,8 @@ tethershot version    # print the installed version
 | `WirelessCapture` | Talks to the `tunneld` HTTP API, runs `pymobiledevice3 developer dvt screenshot` over the Wi-Fi tunnel |
 | `Updater` | Checks the npm registry, runs `npm install -g tethershot@latest`, relaunches via a detached helper |
 | `AppModel` | Main-actor state: device list, destination folder, options, status |
-| `MenuContent` / `TetherShotApp` | SwiftUI `MenuBarExtra` UI, runs as an `LSUIElement` agent |
+| `MainWindow` / `MenuContent` | Compact SwiftUI app window plus optional `MenuBarExtra` controls |
+| `TetherShotApp` | Window lifecycle: closing hides the Dock presence while background capture stays alive |
 
 Capture backends sit behind a `CaptureBackend` protocol, so USB and Wi-Fi share one code path. The marketing/docs site lives in [`/web`](web) and deploys to [tethershot.apoorvdarshan.com](https://tethershot.apoorvdarshan.com).
 

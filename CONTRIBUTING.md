@@ -13,8 +13,9 @@ Thanks for your interest in improving TetherShot! This is a small, focused macOS
 
 ```
 Sources/TetherShot/
-  TetherShotApp.swift     SwiftUI MenuBarExtra entry point (LSUIElement agent)
-  MenuContent.swift       the menu UI
+  TetherShotApp.swift     SwiftUI scenes + AppKit window/background lifecycle
+  MainWindow.swift        compact app-window UI
+  MenuContent.swift       optional menu-bar UI
   AppModel.swift          main-actor state + orchestration
   Capture/
     CaptureBackend.swift  protocol shared by both backends
@@ -24,6 +25,7 @@ Sources/TetherShot/
   Storage/                FolderStore, Filename
   Diagnostics/            Log, Proc
 scripts/                  tunneld install/uninstall, npm postinstall
+script/build_and_run.sh   canonical local build, install, and launch entry point
 web/                      marketing + docs site (deploys to Cloudflare Pages)
 functions/                Pages middleware (redirects the default hostname)
 build.sh                  compiles + packages TetherShot.app (+ icon, version stamp)

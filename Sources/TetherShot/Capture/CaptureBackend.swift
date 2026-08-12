@@ -1,7 +1,7 @@
 import Foundation
 
 /// How a phone is reachable. USB is implemented in Phase 1; Wi-Fi arrives in Phase 2.
-enum ConnectionKind: String {
+enum ConnectionKind: String, Equatable {
     case usb = "USB"
     case wireless = "Wi-Fi"
 }
