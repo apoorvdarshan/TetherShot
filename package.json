@@ -1,6 +1,6 @@
 {
   "name": "tethershot",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Native macOS app for pixel-perfect iPhone screenshots over USB or Wi-Fi, saved locally and copied to your clipboard.",
   "bin": {
     "tethershot": "bin/tethershot.js"
