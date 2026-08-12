@@ -49,14 +49,26 @@ if [[ -n "$IDENTITY" ]]; then
 fi
 
 if [[ "${NOTARIZE:-0}" == "1" ]]; then
-  : "${APPLE_ID:?APPLE_ID is required for notarization}"
-  : "${APPLE_TEAM_ID:?APPLE_TEAM_ID is required for notarization}"
-  : "${APPLE_APP_PASSWORD:?APPLE_APP_PASSWORD is required for notarization}"
-  xcrun notarytool submit "$DMG" \
-    --apple-id "$APPLE_ID" \
-    --team-id "$APPLE_TEAM_ID" \
-    --password "$APPLE_APP_PASSWORD" \
-    --wait
+  if [[ -n "${ASC_KEY_PATH:-}" ]]; then
+    : "${ASC_KEY_ID:?ASC_KEY_ID is required for ASC notarization}"
+    notary_args=(
+      --key "$ASC_KEY_PATH"
+      --key-id "$ASC_KEY_ID"
+    )
+    if [[ -n "${ASC_ISSUER_ID:-}" ]]; then
+      notary_args+=(--issuer "$ASC_ISSUER_ID")
+    fi
+    xcrun notarytool submit "$DMG" "${notary_args[@]}" --wait
+  else
+    : "${APPLE_ID:?APPLE_ID is required for Apple ID notarization}"
+    : "${APPLE_TEAM_ID:?APPLE_TEAM_ID is required for Apple ID notarization}"
+    : "${APPLE_APP_PASSWORD:?APPLE_APP_PASSWORD is required for Apple ID notarization}"
+    xcrun notarytool submit "$DMG" \
+      --apple-id "$APPLE_ID" \
+      --team-id "$APPLE_TEAM_ID" \
+      --password "$APPLE_APP_PASSWORD" \
+      --wait
+  fi
   xcrun stapler staple "$DMG"
   xcrun stapler validate "$DMG"
 fi

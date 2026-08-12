@@ -57,11 +57,11 @@ jobs:
           CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_APPLICATION_P12 }}
           CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_APPLICATION_PASSWORD }}
           DEVELOPER_ID_APPLICATION_NAME: ${{ secrets.DEVELOPER_ID_APPLICATION_NAME }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          ASC_PRIVATE_KEY_P8: ${{ secrets.ASC_PRIVATE_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
-          for name in CERTIFICATE_P12 CERTIFICATE_PASSWORD DEVELOPER_ID_APPLICATION_NAME APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD; do
+          for name in CERTIFICATE_P12 CERTIFICATE_PASSWORD DEVELOPER_ID_APPLICATION_NAME ASC_PRIVATE_KEY_P8 ASC_KEY_ID ASC_ISSUER_ID; do
             test -n "${!name}" || { echo "::error::Missing required secret: $name"; exit 1; }
           done
 
@@ -80,13 +80,22 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
           security set-key-partition-list -S apple-tool:,apple: -s -k actions "$KEYCHAIN"
 
+      - name: Prepare App Store Connect notarization key
+        env:
+          ASC_PRIVATE_KEY_P8: ${{ secrets.ASC_PRIVATE_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          ASC_KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_PRIVATE_KEY_P8" | /usr/bin/base64 -D > "$ASC_KEY_PATH"
+          chmod 600 "$ASC_KEY_PATH"
+          echo "ASC_KEY_PATH=$ASC_KEY_PATH" >> "$GITHUB_ENV"
+
       - name: Build, sign, and notarize universal DMG
         env:
           DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION_NAME }}
           NOTARIZE: "1"
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           test -n "$DEVELOPER_ID_APPLICATION" || { echo "::error::Missing DEVELOPER_ID_APPLICATION_NAME"; exit 1; }
           ./script/build_dmg.sh

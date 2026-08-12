@@ -76,14 +76,15 @@ Build a local, ad-hoc signed universal test image with:
 ./script/build_dmg.sh
 ```
 
-Release builds set `DEVELOPER_ID_APPLICATION` and `NOTARIZE=1`, plus `APPLE_ID`, `APPLE_TEAM_ID`, and `APPLE_APP_PASSWORD`. The tag workflow imports the Developer ID certificate, notarizes the DMG, publishes npm, and attaches the DMG to the matching GitHub release. A tag must exactly match `package.json` (for example `v1.0.6`).
+Release builds set `DEVELOPER_ID_APPLICATION` and `NOTARIZE=1`, plus an App Store Connect API key. The tag workflow imports the Developer ID certificate, notarizes the DMG, publishes npm, and attaches the DMG to the matching GitHub release. A tag must exactly match `package.json` (for example `v1.0.6`).
 
 Configure these GitHub Actions secrets before tagging:
 
 - `DEVELOPER_ID_APPLICATION_P12` — base64-encoded Developer ID Application certificate and private key.
 - `DEVELOPER_ID_APPLICATION_PASSWORD` — password used when exporting that P12.
 - `DEVELOPER_ID_APPLICATION_NAME` — full signing identity shown by `security find-identity -v -p codesigning`.
-- `APPLE_ID`, `APPLE_TEAM_ID`, and `APPLE_APP_PASSWORD` — notarization credentials.
+- `ASC_PRIVATE_KEY_P8` — base64-encoded App Store Connect API private key.
+- `ASC_KEY_ID` and `ASC_ISSUER_ID` — App Store Connect team API key identifiers used only for notarization.
 - `NPM_TOKEN` — npm Automation token used for the matching package publish.
 
 ## Code style
