@@ -28,7 +28,7 @@ scripts/                  tunneld install/uninstall, npm postinstall
 script/build_and_run.sh   canonical local build, install, and launch entry point
 web/                      marketing + docs site (deploys to Cloudflare Pages)
 functions/                Pages middleware (redirects the default hostname)
-build.sh                  compiles + packages TetherShot.app (+ icon, version stamp)
+build.sh                  packages .build/TetherShot.app (+ icon, version stamp)
 ```
 
 ## Development setup
@@ -41,7 +41,7 @@ cd TetherShot
 
 swift build            # quick compile check
 ./build.sh             # compile + package TetherShot.app (debug: ./build.sh debug)
-open TetherShot.app    # run it
+open .build/TetherShot.app  # run it
 ```
 
 For wireless work you'll also need `pip3 install -U pymobiledevice3` and a paired iPhone with Developer Mode enabled (see the README's Wireless setup).

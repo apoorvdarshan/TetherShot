@@ -6,7 +6,7 @@ APP_NAME="TetherShot"
 BUNDLE_ID="com.apoorvdarshan.tethershot"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUILT_APP="$ROOT_DIR/TetherShot.app"
+BUILT_APP="$ROOT_DIR/.build/TetherShot.app"
 INSTALL_DIR="$HOME/Applications"
 INSTALLED_APP="$INSTALL_DIR/TetherShot.app"
 APP_BINARY="$INSTALLED_APP/Contents/MacOS/TetherShot"
@@ -19,6 +19,9 @@ mkdir -p "$INSTALL_DIR"
 rm -rf "$INSTALLED_APP"
 cp -R "$BUILT_APP" "$INSTALLED_APP"
 /usr/bin/codesign --force --deep --sign - "$INSTALLED_APP" >/dev/null 2>&1 || true
+# The installed bundle is canonical; do not leave a second app bundle for
+# Spotlight or Launch Services to discover in the source checkout.
+rm -rf "$BUILT_APP"
 
 open_app() {
   /usr/bin/open -n "$INSTALLED_APP"

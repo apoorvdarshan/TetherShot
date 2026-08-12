@@ -66,14 +66,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 private struct WindowReader: NSViewRepresentable {
     let onResolve: (NSWindow?) -> Void
 
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async { onResolve(view.window) }
+    func makeNSView(context: Context) -> WindowReaderView {
+        let view = WindowReaderView()
+        view.onResolve = onResolve
         return view
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async { onResolve(nsView.window) }
+    func updateNSView(_ nsView: WindowReaderView, context: Context) {
+        nsView.onResolve = onResolve
+    }
+}
+
+/// Reports only actual window attachment changes. Scheduling work from every
+/// `updateNSView` creates a SwiftUI/AppKit invalidation loop on macOS 26.
+private final class WindowReaderView: NSView {
+    var onResolve: ((NSWindow?) -> Void)?
+    private weak var resolvedWindow: NSWindow?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard window !== resolvedWindow else { return }
+        resolvedWindow = window
+        onResolve?(window)
     }
 }
 

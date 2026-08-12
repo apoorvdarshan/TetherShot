@@ -169,6 +169,7 @@ final class AppModel: ObservableObject {
     }
 
     func setShowInMenuBar(_ enabled: Bool) {
+        guard showInMenuBar != enabled else { return }
         showInMenuBar = enabled
         UserDefaults.standard.set(enabled, forKey: "showInMenuBar")
         lastStatus = enabled

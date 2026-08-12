@@ -84,7 +84,7 @@ It **builds from source on your machine**, so the app gets **no Gatekeeper quara
 git clone https://github.com/apoorvdarshan/TetherShot.git
 cd TetherShot
 ./build.sh             # compiles + packages TetherShot.app
-open TetherShot.app     # launches the app and menu-bar control
+open .build/TetherShot.app  # launches the app and menu-bar control
 ```
 
 On first USB capture, macOS asks for **Camera** permission — expected: the iPhone screen is delivered through the AVFoundation (camera) privacy bucket. TetherShot never uses your Mac's camera.

@@ -50,9 +50,9 @@ try {
   process.exit(1);
 }
 
-const builtApp = path.join(pkgRoot, 'TetherShot.app');
+const builtApp = path.join(pkgRoot, '.build', 'TetherShot.app');
 if (!fs.existsSync(builtApp)) {
-  console.error('[TetherShot] Build did not produce TetherShot.app.');
+  console.error('[TetherShot] Build did not produce .build/TetherShot.app.');
   process.exit(1);
 }
 
@@ -63,6 +63,9 @@ execFileSync('/bin/rm', ['-rf', destApp]);
 execFileSync('/bin/cp', ['-R', builtApp, destApp]);
 // Re-sign at the final path so the ad-hoc identity is stable there.
 try { execFileSync('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', destApp], { stdio: 'ignore' }); } catch (_) {}
+// Keep ~/Applications as the only discoverable copy. The build bundle is just
+// staging and otherwise appears as a duplicate in Spotlight/Launch Services.
+execFileSync('/bin/rm', ['-rf', builtApp]);
 
 console.log('\n[TetherShot] Installed to ' + destApp);
 console.log('[TetherShot] Launch it:  tethershot     (or open it from ~/Applications)');

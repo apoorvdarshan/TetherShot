@@ -11,7 +11,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 CONFIG="${1:-release}"
-APP="TetherShot.app"
+# Keep build products under SwiftPM's hidden build directory so Spotlight sees
+# only the canonical copy installed in ~/Applications.
+APP=".build/TetherShot.app"
 
 echo "[1/3] Compiling (${CONFIG})..."
 swift build -c "${CONFIG}"
