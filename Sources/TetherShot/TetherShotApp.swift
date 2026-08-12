@@ -23,6 +23,7 @@ struct TetherShotApp: App {
             )
         ) {
             MenuContent(model: model, showMainWindow: appDelegate.showMainWindow)
+                .tint(TetherShotTheme.accent)
         }
         .menuBarExtraStyle(.menu)
     }

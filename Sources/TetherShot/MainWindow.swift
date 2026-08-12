@@ -20,6 +20,7 @@ struct MainWindow: View {
             footer
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .tint(TetherShotTheme.accent)
         .readWindow { appDelegate.attach(to: $0) }
     }
 
@@ -42,7 +43,7 @@ struct MainWindow: View {
 
             Label(model.devices.isEmpty ? "No device" : "\(model.devices.count) ready", systemImage: model.devices.isEmpty ? "iphone.slash" : "iphone.gen3")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(model.devices.isEmpty ? Color.secondary : Color.accentColor)
+                .foregroundStyle(model.devices.isEmpty ? Color.secondary : TetherShotTheme.accent)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(.quaternary, in: Capsule())
@@ -213,9 +214,9 @@ private struct DeviceRow: View {
         HStack(spacing: 12) {
             Image(systemName: device.connection == .usb ? "cable.connector" : "wifi")
                 .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(TetherShotTheme.accent)
                 .frame(width: 30, height: 30)
-                .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+                .background(TetherShotTheme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
             VStack(alignment: .leading, spacing: 2) {
                 Text(device.name).fontWeight(.semibold)
                 Text(device.connection.rawValue)
@@ -283,7 +284,7 @@ private struct SettingRow<Accessory: View>: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(TetherShotTheme.accent)
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 12.5, weight: .semibold))
