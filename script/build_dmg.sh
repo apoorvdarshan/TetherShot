@@ -11,6 +11,7 @@ APP="$WORK_DIR/TetherShot.app"
 CONTENTS="$APP/Contents"
 DMG="$DIST_DIR/TetherShot-${VERSION}-universal.dmg"
 IDENTITY="${DEVELOPER_ID_APPLICATION:-}"
+ENTITLEMENTS="$ROOT_DIR/Resources/TetherShot.entitlements"
 
 cd "$ROOT_DIR"
 rm -rf "$ARM_BUILD_DIR" "$X64_BUILD_DIR"
@@ -37,13 +38,25 @@ iconutil -c icns "$ICON_TMP" -o "$CONTENTS/Resources/AppIcon.icns"
 rm -rf "$(dirname "$ICON_TMP")"
 
 if [[ -n "$IDENTITY" ]]; then
-  codesign --force --deep --options runtime --timestamp --sign "$IDENTITY" "$APP"
+  codesign --force --deep --options runtime --timestamp --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$APP"
 else
   echo "warning: DEVELOPER_ID_APPLICATION is unset; creating an ad-hoc local-test DMG" >&2
-  codesign --force --deep --sign - "$APP"
+  codesign --force --deep --entitlements "$ENTITLEMENTS" --sign - "$APP"
 fi
 
 codesign --verify --deep --strict --verbose=2 "$APP"
+entitlements_dump="$(mktemp)"
+cleanup_entitlements_dump() {
+  [[ ! -e "$entitlements_dump" ]] || unlink "$entitlements_dump"
+}
+trap cleanup_entitlements_dump EXIT
+codesign -d --entitlements :- "$APP" > "$entitlements_dump" 2>/dev/null
+camera_entitlement="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.device.camera' "$entitlements_dump" 2>/dev/null || true)"
+cleanup_entitlements_dump
+[[ "$camera_entitlement" == "true" ]] || {
+  echo "error: packaged app is missing the Camera entitlement" >&2
+  exit 1
+}
 cp -R "$APP" "$WORK_DIR/volume/TetherShot.app"
 ln -s /Applications "$WORK_DIR/volume/Applications"
 rm -f "$DMG"

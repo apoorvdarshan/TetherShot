@@ -17,6 +17,7 @@ if (process.platform !== 'darwin') {
 
 const pkgRoot = path.resolve(__dirname, '..');
 const systemApp = '/Applications/TetherShot.app';
+const entitlements = path.join(pkgRoot, 'Resources', 'TetherShot.entitlements');
 
 function isTetherShot(appPath) {
   const info = path.join(appPath, 'Contents', 'Info.plist');
@@ -79,7 +80,9 @@ fs.mkdirSync(appsDir, { recursive: true });
 execFileSync('/bin/rm', ['-rf', destApp]);
 execFileSync('/bin/cp', ['-R', builtApp, destApp]);
 // Re-sign at the final path so the ad-hoc identity is stable there.
-try { execFileSync('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', destApp], { stdio: 'ignore' }); } catch (_) {}
+try {
+  execFileSync('/usr/bin/codesign', ['--force', '--deep', '--entitlements', entitlements, '--sign', '-', destApp], { stdio: 'ignore' });
+} catch (_) {}
 // Keep ~/Applications as the only discoverable copy. The build bundle is just
 // staging and otherwise appears as a duplicate in Spotlight/Launch Services.
 execFileSync('/bin/rm', ['-rf', builtApp]);

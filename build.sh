@@ -14,6 +14,7 @@ CONFIG="${1:-release}"
 # Keep build products under SwiftPM's hidden build directory so Spotlight sees
 # only the canonical copy installed in ~/Applications.
 APP=".build/TetherShot.app"
+ENTITLEMENTS="Resources/TetherShot.entitlements"
 
 echo "[1/3] Compiling (${CONFIG})..."
 swift build -c "${CONFIG}"
@@ -56,9 +57,10 @@ if [ -f package.json ] && command -v node >/dev/null 2>&1; then
     fi
 fi
 
-# Ad-hoc sign so TCC (Camera) can attribute permission to a stable bundle id.
+# Ad-hoc sign with the Camera entitlement so TCC can attribute permission to a
+# stable bundle identity and register TetherShot in Privacy settings.
 echo "[3/3] Ad-hoc signing..."
-codesign --force --deep --sign - "${APP}" >/dev/null 2>&1 || \
+codesign --force --deep --entitlements "${ENTITLEMENTS}" --sign - "${APP}" >/dev/null 2>&1 || \
     echo "      (codesign skipped -- app still runs, camera prompt may repeat)"
 
 echo "Done. Built ${APP}"
