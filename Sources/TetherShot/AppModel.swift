@@ -18,9 +18,12 @@ final class AppModel: ObservableObject {
     @Published var autoCheckForUpdates = (UserDefaults.standard.object(forKey: "autoCheckForUpdates") as? Bool) ?? true
     @Published var autoInstallUpdates = (UserDefaults.standard.object(forKey: "autoInstallUpdates") as? Bool) ?? false
     @Published var availableUpdate: String?
+    @Published private(set) var quickCapturePreference = QuickCapturePreferenceStore.load()
 
     let hotKeyDisplay = HotKey.defaultDisplay
     var appVersion: String { updater.currentVersion }
+    var quickCaptureSelectionID: String { quickCapturePreference?.id ?? "" }
+    var quickCaptureTargetName: String { quickCapturePreference?.name ?? "All connected devices" }
 
     private let usb = USBCapture()
     private let wireless = WirelessCapture()
@@ -72,17 +75,27 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Global-hotkey entry point: re-discovers, then captures every device found.
+    /// Global-hotkey entry point: re-discovers, then captures the saved device
+    /// or every device when no preference has been set.
     func hotKeyCapture() {
         Task {
             let list = await merged(with: usb.discoverDevices())
             devices = list
-            guard !list.isEmpty else {
-                lastStatus = "Quick capture: no iPhone found"
+
+            switch QuickCaptureTarget.resolve(devices: list, preference: quickCapturePreference) {
+            case .all(let devices):
+                guard !devices.isEmpty else {
+                    lastStatus = "Quick capture: no iPhone found"
+                    NSSound(named: "Funk")?.play()
+                    return
+                }
+                for device in devices { await performCapture(device) }
+            case .device(let device):
+                await performCapture(device)
+            case .preferredDeviceUnavailable:
+                lastStatus = "Quick capture: \(quickCaptureTargetName) is not connected"
                 NSSound(named: "Funk")?.play()
-                return
             }
-            for device in list { await performCapture(device) }
         }
     }
 
@@ -166,6 +179,21 @@ final class AppModel: ObservableObject {
     func setCopyToClipboard(_ enabled: Bool) {
         copyToClipboard = enabled
         UserDefaults.standard.set(enabled, forKey: "copyToClipboard")
+    }
+
+    func setQuickCaptureDevice(_ deviceID: String) {
+        if deviceID.isEmpty {
+            quickCapturePreference = nil
+            QuickCapturePreferenceStore.save(nil)
+            lastStatus = "Quick capture will use all connected devices."
+            return
+        }
+
+        guard let device = devices.first(where: { $0.id == deviceID }) else { return }
+        let preference = QuickCaptureDevicePreference(id: device.id, name: device.name)
+        quickCapturePreference = preference
+        QuickCapturePreferenceStore.save(preference)
+        lastStatus = "Quick capture will use \(device.name)."
     }
 
     func setShowInMenuBar(_ enabled: Bool) {

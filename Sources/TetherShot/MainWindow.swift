@@ -82,6 +82,18 @@ struct MainWindow: View {
 
                 Divider()
 
+                SettingRow(
+                    icon: "scope",
+                    title: "Quick Capture Device",
+                    detail: "Used by \(model.hotKeyDisplay); remembered across launches"
+                ) {
+                    QuickCaptureDevicePicker(model: model)
+                        .labelsHidden()
+                        .frame(width: 210)
+                }
+
+                Divider()
+
                 HStack(spacing: 10) {
                     Button("Refresh Devices", systemImage: "arrow.clockwise") { model.refreshDevices() }
                     if model.devices.count > 1 {
@@ -140,7 +152,7 @@ struct MainWindow: View {
                         .labelsHidden().toggleStyle(.switch)
                 }
                 Divider().padding(.leading, 48)
-                SettingRow(icon: "command", title: "Quick Capture", detail: "Capture every connected device from anywhere") {
+                SettingRow(icon: "command", title: "Quick Capture", detail: "Current target: \(model.quickCaptureTargetName)") {
                     Text(model.hotKeyDisplay)
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 9)

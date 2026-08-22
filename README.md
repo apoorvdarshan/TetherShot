@@ -50,7 +50,7 @@ macOS already lets QuickTime/OBS mirror a tethered iPhone's *screen* (it appears
 - 🔌 **USB capture** — a trusted, cabled iPhone is grabbed at full resolution via native AVFoundation. Instant, zero setup.
 - 📶 **Wi-Fi capture** — cable-free over your local network via a RemoteXPC tunnel ([`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3)). Pixel-perfect, even when the phone is locked.
 - 📋 **Clipboard** — every capture is copied, ready to paste (toggle on by default).
-- ⌨️ **Global hotkey** — press <kbd>⌘⇧7</kbd> anywhere to capture every connected device.
+- ⌨️ **Global hotkey** — press <kbd>⌘⇧7</kbd> anywhere to capture every connected device, or choose one preferred iPhone and remember it across launches.
 - 🗂️ **Your folder, your rules** — any destination, timestamped filenames, optional per-device subfolders.
 - ⬆️ **Self-updating** — in-app **Check for Updates** downloads the signed, notarized GitHub release, verifies it, replaces the current app in place, and relaunches.
 - 🪟 **Compact Mac app** — open it from Applications or Spotlight; closing the window keeps capture running and removes the Dock icon.
@@ -116,7 +116,8 @@ Open TetherShot from Applications or Spotlight, or click its menu-bar icon, then
 
 | Option | What it does |
 |---|---|
-| <kbd>⌘⇧7</kbd> | Quick-capture every connected device, from anywhere |
+| <kbd>⌘⇧7</kbd> | Quick-capture the saved preferred iPhone, or every connected device by default |
+| **Quick Capture Device** | Choose one iPhone for the hotkey; the selection persists across launches |
 | **Copy to Clipboard** | Also place each capture on the clipboard (default on) |
 | **Organize by Device** | Save into a per-device subfolder |
 | **Choose Folder…** | Pick any destination; remembered across launches |

@@ -22,7 +22,8 @@ struct MenuContent: View {
                 Button("📸  Screenshot All") { model.captureAll() }
             }
         }
-        Text("Quick capture anywhere: \(model.hotKeyDisplay)")
+        QuickCaptureDevicePicker(model: model)
+        Text("Quick capture: \(model.hotKeyDisplay)")
 
         Divider()
 
