@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/apoorvdarshan/TetherShot/main/web/assets/logo.png" width="168" alt="TetherShot logo" />
+<img src="https://raw.githubusercontent.com/aopv/TetherShot/main/web/assets/logo.png" width="168" alt="TetherShot logo" />
 
 <h1>TetherShot</h1>
 
@@ -15,25 +15,25 @@
   <img src="https://img.shields.io/badge/iPhone-USB%20%2B%20Wi--Fi-5856D6?logo=apple&logoColor=white" alt="iPhone USB + Wi-Fi" />
   <img src="https://img.shields.io/badge/Homebrew-Cask-FBB040?logo=homebrew&logoColor=black" alt="Homebrew Cask" />
   <img src="https://img.shields.io/npm/v/tethershot?logo=npm&label=npm&color=CB3837" alt="npm version" />
-  <img src="https://img.shields.io/github/stars/apoorvdarshan/TetherShot?logo=github&color=FFCA28" alt="GitHub stars" />
+  <img src="https://img.shields.io/github/stars/aopv/TetherShot?logo=github&color=FFCA28" alt="GitHub stars" />
   <img src="https://img.shields.io/badge/license-MIT-3DA639" alt="MIT License" />
   <a href="https://www.producthunt.com/products/tethershot"><img src="https://img.shields.io/badge/Product_Hunt-Vote-DA552F?logo=producthunt&logoColor=white" alt="Vote on Product Hunt" /></a>
 </p>
 
 <p>
   <a href="https://tethershot.apoorvdarshan.com"><b>Website</b></a> ·
-  <a href="https://github.com/apoorvdarshan/homebrew-tap">Homebrew</a> ·
+  <a href="https://github.com/aopv/homebrew-tap">Homebrew</a> ·
   <a href="https://www.npmjs.com/package/tethershot">npm</a> ·
   <a href="#installation">Install</a> ·
   <a href="https://tethershot.apoorvdarshan.com/docs.html">Docs</a> ·
   <a href="#support">Support</a>
 </p>
 
-<p><code>brew install --cask apoorvdarshan/tap/tethershot</code></p>
+<p><code>brew install --cask aopv/tap/tethershot</code></p>
 
 <br />
 
-<img src="https://raw.githubusercontent.com/apoorvdarshan/TetherShot/main/web/assets/og-v106.jpg" width="760" alt="TetherShot capture beam preview" />
+<img src="https://raw.githubusercontent.com/aopv/TetherShot/main/web/assets/og-v106.jpg" width="760" alt="TetherShot capture beam preview" />
 
 </div>
 
@@ -71,7 +71,7 @@ macOS already lets QuickTime/OBS mirror a tethered iPhone's *screen* (it appears
 ### Via Homebrew — recommended
 
 ```bash
-brew install --cask apoorvdarshan/tap/tethershot
+brew install --cask aopv/tap/tethershot
 ```
 
 Homebrew downloads the checksum-verified, signed, and notarized universal DMG
@@ -80,7 +80,7 @@ latest stable GitHub Release.
 
 ### Via DMG
 
-Download the signed, notarized universal DMG from the [latest GitHub release](https://github.com/apoorvdarshan/TetherShot/releases/latest), open it, and drag TetherShot into Applications. The same build runs natively on Apple silicon and Intel Macs and becomes the canonical `/Applications` copy.
+Download the signed, notarized universal DMG from the [latest GitHub release](https://github.com/aopv/TetherShot/releases/latest), open it, and drag TetherShot into Applications. The same build runs natively on Apple silicon and Intel Macs and becomes the canonical `/Applications` copy.
 
 ### Via npm
 
@@ -102,7 +102,7 @@ in-app updates replace that canonical copy in place.
 ### From source
 
 ```bash
-git clone https://github.com/apoorvdarshan/TetherShot.git
+git clone https://github.com/aopv/TetherShot.git
 cd TetherShot
 ./build.sh             # compiles + packages TetherShot.app
 open .build/TetherShot.app  # launches the app and menu-bar control
@@ -186,7 +186,7 @@ If TetherShot is useful to you:
 
 ## Star History
 
-<a href="https://github.com/apoorvdarshan/TetherShot/stargazers">
+<a href="https://github.com/aopv/TetherShot/stargazers">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://tethershot.apoorvdarshan.com/api/star-history.svg?theme=dark&amp;v=1" />
     <source media="(prefers-color-scheme: light)" srcset="https://tethershot.apoorvdarshan.com/api/star-history.svg?theme=light&amp;v=1" />
@@ -196,6 +196,6 @@ If TetherShot is useful to you:
 
 ## License
 
-[MIT](LICENSE) © 2026 [Apoorv Darshan](https://github.com/apoorvdarshan)
+[MIT](LICENSE) © 2026 [Apoorv Darshan](https://github.com/aopv)
 
 <sub>Not affiliated with Apple Inc. iPhone, macOS, and Apple are trademarks of Apple Inc.</sub>

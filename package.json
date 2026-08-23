@@ -25,11 +25,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/apoorvdarshan/TetherShot.git"
+    "url": "git+https://github.com/aopv/TetherShot.git"
   },
   "homepage": "https://tethershot.apoorvdarshan.com",
   "bugs": {
-    "url": "https://github.com/apoorvdarshan/TetherShot/issues"
+    "url": "https://github.com/aopv/TetherShot/issues"
   },
   "keywords": [
     "iphone",
