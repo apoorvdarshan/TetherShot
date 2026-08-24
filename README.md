@@ -21,11 +21,11 @@
 </p>
 
 <p>
-  <a href="https://tethershot.apoorvdarshan.com"><b>Website</b></a> ·
+  <a href="https://tethershot.aopv.dev"><b>Website</b></a> ·
   <a href="https://github.com/aopv/homebrew-tap">Homebrew</a> ·
   <a href="https://www.npmjs.com/package/tethershot">npm</a> ·
   <a href="#installation">Install</a> ·
-  <a href="https://tethershot.apoorvdarshan.com/docs.html">Docs</a> ·
+  <a href="https://tethershot.aopv.dev/docs.html">Docs</a> ·
   <a href="#support">Support</a>
 </p>
 
@@ -165,7 +165,7 @@ tethershot version    # print the installed version
 | `MainWindow` / `MenuContent` | Compact SwiftUI app window plus optional `MenuBarExtra` controls |
 | `TetherShotApp` | Window lifecycle: closing hides the Dock presence while background capture stays alive |
 
-Capture backends sit behind a `CaptureBackend` protocol, so USB and Wi-Fi share one code path. The marketing/docs site lives in [`/web`](web) and deploys to [tethershot.apoorvdarshan.com](https://tethershot.apoorvdarshan.com).
+Capture backends sit behind a `CaptureBackend` protocol, so USB and Wi-Fi share one code path. The marketing/docs site lives in [`/web`](web) and deploys to [tethershot.aopv.dev](https://tethershot.aopv.dev).
 
 ## Contributing
 
@@ -188,9 +188,9 @@ If TetherShot is useful to you:
 
 <a href="https://github.com/aopv/TetherShot/stargazers">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://tethershot.apoorvdarshan.com/api/star-history.svg?theme=dark&amp;v=1" />
-    <source media="(prefers-color-scheme: light)" srcset="https://tethershot.apoorvdarshan.com/api/star-history.svg?theme=light&amp;v=1" />
-    <img alt="TetherShot GitHub star history" src="https://tethershot.apoorvdarshan.com/api/star-history.svg?theme=light&amp;v=1" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://tethershot.aopv.dev/api/star-history.svg?theme=dark&amp;v=1" />
+    <source media="(prefers-color-scheme: light)" srcset="https://tethershot.aopv.dev/api/star-history.svg?theme=light&amp;v=1" />
+    <img alt="TetherShot GitHub star history" src="https://tethershot.aopv.dev/api/star-history.svg?theme=light&amp;v=1" />
   </picture>
 </a>
 

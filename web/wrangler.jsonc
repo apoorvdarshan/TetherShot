@@ -15,7 +15,7 @@
   },
   "routes": [
     {
-      "pattern": "tethershot.apoorvdarshan.com",
+      "pattern": "tethershot.aopv.dev",
       "custom_domain": true
     }
   ],
