@@ -49,7 +49,7 @@ private enum UpdateError: LocalizedError {
 /// Node.js, Xcode, or a compiler.
 @MainActor
 final class Updater {
-    private static let repository = "aopv/TetherShot"
+    private static let repository = "apoorvdarshan/TetherShot"
     private static let teamIdentifier = "23RV7FYH36"
     private static let bundleIdentifier = AppInstallation.bundleIdentifier
     private var pendingUpdate: PendingUpdate?

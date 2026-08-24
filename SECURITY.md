@@ -17,7 +17,7 @@ tethershot update     # or: npm install -g tethershot@latest
 
 **Please do not open a public issue for security problems.**
 
-Report privately through GitHub's **[private vulnerability reporting](https://github.com/aopv/TetherShot/security/advisories/new)** (Security ▸ "Report a vulnerability"). If that's unavailable to you, reach out via DM to [@apoorvdarshan](https://x.com/apoorvdarshan) and we'll arrange a private channel.
+Report privately through GitHub's **[private vulnerability reporting](https://github.com/apoorvdarshan/TetherShot/security/advisories/new)** (Security ▸ "Report a vulnerability"). If that's unavailable to you, reach out via DM to [@apoorvdarshan](https://x.com/apoorvdarshan) and we'll arrange a private channel.
 
 When reporting, please include:
 

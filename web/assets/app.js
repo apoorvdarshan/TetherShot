@@ -32,7 +32,7 @@ if (reduceMotion || !('IntersectionObserver' in window)) {
 // Resolve the signed DMG from the latest GitHub release when it exists.
 const dmgLink = document.querySelector('[data-dmg-link]');
 if (dmgLink) {
-  fetch('https://api.github.com/repos/aopv/TetherShot/releases/latest', {
+  fetch('https://api.github.com/repos/apoorvdarshan/TetherShot/releases/latest', {
     headers: { Accept: 'application/vnd.github+json' }
   })
     .then((response) => response.ok ? response.json() : Promise.reject(new Error('No release')))

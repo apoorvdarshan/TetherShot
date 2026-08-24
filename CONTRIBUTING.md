@@ -4,7 +4,7 @@ Thanks for your interest in improving TetherShot! This is a small, focused macOS
 
 ## Ways to contribute
 
-- 🐛 **Report a bug** — open an [issue](https://github.com/aopv/TetherShot/issues) with your macOS + iOS versions, steps to reproduce, and what you expected.
+- 🐛 **Report a bug** — open an [issue](https://github.com/apoorvdarshan/TetherShot/issues) with your macOS + iOS versions, steps to reproduce, and what you expected.
 - 💡 **Suggest a feature** — open an issue describing the use case before sending a large PR, so we can agree on scope.
 - 🔧 **Send a pull request** — see the workflow below.
 - 📖 **Improve the docs** — the README and the site in [`/web`](web).
@@ -37,7 +37,7 @@ build.sh                  packages .build/TetherShot.app (+ icon, version stamp)
 You need macOS 14+ and the Xcode Command Line Tools.
 
 ```bash
-git clone https://github.com/aopv/TetherShot.git
+git clone https://github.com/apoorvdarshan/TetherShot.git
 cd TetherShot
 
 swift build            # quick compile check
