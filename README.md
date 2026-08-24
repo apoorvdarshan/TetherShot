@@ -29,7 +29,7 @@
   <a href="#support">Support</a>
 </p>
 
-<p><code>brew install --cask aopv/tap/tethershot</code></p>
+<p><code>brew install --cask apoorvdarshan/tap/tethershot</code></p>
 
 <br />
 
@@ -71,7 +71,7 @@ macOS already lets QuickTime/OBS mirror a tethered iPhone's *screen* (it appears
 ### Via Homebrew — recommended
 
 ```bash
-brew install --cask aopv/tap/tethershot
+brew install --cask apoorvdarshan/tap/tethershot
 ```
 
 Homebrew downloads the checksum-verified, signed, and notarized universal DMG
