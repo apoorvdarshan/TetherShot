@@ -267,9 +267,9 @@ final class AppModel: ObservableObject {
     private func runAndroidLivePreview(device: CaptureDevice, state: DevicePreviewState) async {
         state.markLoading()
         // `screenrecord` can wait for screen activity before completing the first
-        // video NAL unit. Seed the card immediately, then let H.264 take over.
-        if state.image == nil,
-           let initialFrame = try? await android.capture(deviceID: device.captureID),
+        // video NAL unit. Seed every new stream with a fresh frame so a preview
+        // resumed after being hidden never displays its cached, pre-pause image.
+        if let initialFrame = try? await android.capture(deviceID: device.captureID),
            !Task.isCancelled {
             await state.update(png: initialFrame)
         }
