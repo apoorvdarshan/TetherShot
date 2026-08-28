@@ -27,8 +27,8 @@ cp "${BIN}" "${APP}/Contents/MacOS/TetherShot"
 cp Resources/Info.plist "${APP}/Contents/Info.plist"
 
 # Bundle the wireless setup scripts so the menu's "Set Up Wi-Fi Capture…" works.
-cp scripts/install-tunneld.sh scripts/uninstall-tunneld.sh "${APP}/Contents/Resources/"
-chmod +x "${APP}/Contents/Resources/"*.sh
+cp scripts/install-tunneld.sh scripts/uninstall-tunneld.sh scripts/wireless-preview.py "${APP}/Contents/Resources/"
+chmod +x "${APP}/Contents/Resources/"*.sh "${APP}/Contents/Resources/"*.py
 
 # Generate the app icon from Resources/AppIcon.png (stock tools only: sips +
 # iconutil), so every from-source build/install gets the icon.

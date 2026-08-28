@@ -27,6 +27,16 @@ final class WirelessCapture: CaptureBackend {
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
     }()
 
+    private static let pythonPath: String? = {
+        guard let pmd3Path,
+              let handle = FileHandle(forReadingAtPath: pmd3Path),
+              let line = String(data: handle.readData(ofLength: 256), encoding: .utf8)?
+                .split(whereSeparator: \.isNewline).first,
+              line.hasPrefix("#!") else { return nil }
+        let path = String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+        return FileManager.default.isExecutableFile(atPath: path) ? path : nil
+    }()
+
     private var nameCache: [String: String] = [:]
 
     /// True when the tunneld daemon answers — i.e. wireless setup is in place.
@@ -115,7 +125,142 @@ final class WirelessCapture: CaptureBackend {
         return try Data(contentsOf: out)
     }
 
+    func streamPreview(
+        deviceID: String,
+        onFrame: @escaping @Sendable (Data) -> Void
+    ) async throws {
+        guard let python = Self.pythonPath else {
+            throw CaptureError.other("Python for pymobiledevice3 could not be found.")
+        }
+        guard let helper = Self.previewHelperPath else {
+            throw CaptureError.other("Wireless live-preview helper is missing.")
+        }
+        let stream = LengthPrefixedPNGPreviewStream(
+            executablePath: python,
+            arguments: [helper, deviceID]
+        )
+        try await stream.run(onFrame: onFrame)
+    }
+
+    private static var previewHelperPath: String? {
+        if let bundled = Bundle.main.url(
+            forResource: "wireless-preview",
+            withExtension: "py"
+        )?.path {
+            return bundled
+        }
+        let sourcePath = FileManager.default.currentDirectoryPath
+            + "/scripts/wireless-preview.py"
+        return FileManager.default.fileExists(atPath: sourcePath) ? sourcePath : nil
+    }
+
     private func firstLine(_ text: String) -> String? {
         text.split(whereSeparator: \.isNewline).first.map(String.init)
+    }
+}
+
+private final class LengthPrefixedPNGPreviewStream: @unchecked Sendable {
+    private let executablePath: String
+    private let arguments: [String]
+    private let lock = NSLock()
+    private var process: Process?
+    private var cancelled = false
+
+    init(executablePath: String, arguments: [String]) {
+        self.executablePath = executablePath
+        self.arguments = arguments
+    }
+
+    func run(onFrame: @escaping @Sendable (Data) -> Void) async throws {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        try self.runBlocking(onFrame: onFrame)
+                        continuation.resume()
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+        } onCancel: {
+            self.cancel()
+        }
+    }
+
+    private func runBlocking(onFrame: @escaping @Sendable (Data) -> Void) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = arguments
+        var environment = ProcessInfo.processInfo.environment
+        environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        process.environment = environment
+
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+        lock.withLock {
+            self.process = process
+            if cancelled { process.terminate() }
+        }
+        defer { lock.withLock { self.process = nil } }
+
+        do {
+            try process.run()
+        } catch {
+            throw CaptureError.other("Could not start Wi-Fi live preview: \(error.localizedDescription)")
+        }
+        Log.shared.log("wireless: persistent DVT preview started")
+
+        var errorData = Data()
+        let errorDrain = DispatchGroup()
+        errorDrain.enter()
+        DispatchQueue.global().async {
+            errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+            errorDrain.leave()
+        }
+
+        let handle = outputPipe.fileHandleForReading
+        while !isCancelled {
+            guard let header = try handle.readExactly(4) else { break }
+            let length = header.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+            guard length > 0, length <= 32 * 1_024 * 1_024,
+                  let png = try handle.readExactly(Int(length)) else { break }
+            onFrame(png)
+        }
+
+        if process.isRunning { process.terminate() }
+        process.waitUntilExit()
+        _ = errorDrain.wait(timeout: .now() + 2)
+        guard isCancelled else {
+            let message = String(data: errorData, encoding: .utf8)?
+                .split(whereSeparator: \.isNewline).last.map(String.init)
+            throw CaptureError.other(message ?? "Wi-Fi live preview stopped.")
+        }
+    }
+
+    private var isCancelled: Bool {
+        lock.withLock { cancelled }
+    }
+
+    private func cancel() {
+        lock.withLock {
+            cancelled = true
+            if process?.isRunning == true { process?.terminate() }
+        }
+    }
+}
+
+private extension FileHandle {
+    func readExactly(_ count: Int) throws -> Data? {
+        var result = Data()
+        while result.count < count {
+            guard let chunk = try read(upToCount: count - result.count), !chunk.isEmpty else {
+                return nil
+            }
+            result.append(chunk)
+        }
+        return result
     }
 }

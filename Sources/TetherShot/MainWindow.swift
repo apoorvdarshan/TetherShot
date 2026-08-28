@@ -428,24 +428,22 @@ private struct FullDevicePreview: View {
         ZStack {
             Color.black.opacity(0.94)
 
-            if let image = preview.image {
+            if isAndroidVideoPreview, previewsEnabled {
+                if let image = preview.image {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(7)
+                }
+                LiveVideoPreview(relay: preview.videoRelay)
+                if preview.image == nil, preview.phase != .live { previewPlaceholder }
+            } else if let image = preview.image {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFit()
                     .padding(7)
             } else {
-                VStack(spacing: 12) {
-                    if previewsEnabled, preview.phase == .loading {
-                        ProgressView()
-                            .controlSize(.large)
-                    } else {
-                        Image(systemName: previewsEnabled ? device.systemImageName : "pause.fill")
-                            .font(.system(size: 42, weight: .medium))
-                    }
-                    Text(previewStatus)
-                        .font(.headline)
-                }
-                .foregroundStyle(.white.opacity(0.72))
+                previewPlaceholder
             }
 
             VStack {
@@ -482,6 +480,25 @@ private struct FullDevicePreview: View {
             RoundedRectangle(cornerRadius: previewCornerRadius, style: .continuous)
                 .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
         }
+    }
+
+    private var previewPlaceholder: some View {
+        VStack(spacing: 12) {
+            if previewsEnabled, preview.phase == .loading {
+                ProgressView()
+                    .controlSize(.large)
+            } else {
+                Image(systemName: previewsEnabled ? device.systemImageName : "pause.fill")
+                    .font(.system(size: 42, weight: .medium))
+            }
+            Text(previewStatus)
+                .font(.headline)
+        }
+        .foregroundStyle(.white.opacity(0.72))
+    }
+
+    private var isAndroidVideoPreview: Bool {
+        device.connection == .androidUSB || device.connection == .androidWireless
     }
 
     private var previewStatus: String {

@@ -219,6 +219,22 @@ final class AppModel: ObservableObject {
             guard let device = devices.first(where: { $0.id == deviceID }),
                   let state = previewStates[deviceID] else { return }
 
+            if device.connection == .androidUSB || device.connection == .androidWireless {
+                await runAndroidLivePreview(device: device, state: state)
+                if !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 750_000_000)
+                }
+                continue
+            }
+
+            if device.connection == .wireless {
+                await runWirelessLivePreview(device: device, state: state)
+                if !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 750_000_000)
+                }
+                continue
+            }
+
             if !isCapturing {
                 state.markLoading()
                 do {
@@ -232,11 +248,11 @@ final class AppModel: ObservableObject {
                         }
                         png = try await usb.capture(deviceID: device.captureID)
                     case .wireless:
-                        png = try await wireless.capture(deviceID: device.captureID)
+                        preconditionFailure("Wi-Fi previews use the persistent path")
                     case .androidUSB, .androidWireless:
-                        png = try await android.capture(deviceID: device.captureID)
+                        preconditionFailure("Android previews use the streaming path")
                     }
-                    if !Task.isCancelled { state.update(png: png) }
+                    if !Task.isCancelled { await state.update(png: png) }
                 } catch {
                     if !Task.isCancelled { state.fail(Self.previewErrorMessage(error)) }
                 }
@@ -245,6 +261,41 @@ final class AppModel: ObservableObject {
             try? await Task.sleep(
                 nanoseconds: LivePreviewRefreshPolicy.intervalNanoseconds(for: device.connection)
             )
+        }
+    }
+
+    private func runAndroidLivePreview(device: CaptureDevice, state: DevicePreviewState) async {
+        state.markLoading()
+        // `screenrecord` can wait for screen activity before completing the first
+        // video NAL unit. Seed the card immediately, then let H.264 take over.
+        if state.image == nil,
+           let initialFrame = try? await android.capture(deviceID: device.captureID),
+           !Task.isCancelled {
+            await state.update(png: initialFrame)
+        }
+        do {
+            try await android.streamPreview(
+                deviceID: device.captureID,
+                relay: state.videoRelay
+            ) { [weak state] size in
+                Task { @MainActor in state?.markVideoLive(size: size) }
+            }
+        } catch {
+            if !Task.isCancelled { state.fail(Self.previewErrorMessage(error)) }
+        }
+    }
+
+    private func runWirelessLivePreview(device: CaptureDevice, state: DevicePreviewState) async {
+        state.markLoading()
+        do {
+            try await wireless.streamPreview(deviceID: device.captureID) { [weak state] png in
+                Task { @MainActor in
+                    guard !Task.isCancelled else { return }
+                    await state?.update(png: png)
+                }
+            }
+        } catch {
+            if !Task.isCancelled { state.fail(Self.previewErrorMessage(error)) }
         }
     }
 

@@ -9,15 +9,34 @@ enum Proc {
         let stderr: String
     }
 
+    struct DataResult {
+        let status: Int32
+        let stdout: Data
+        let stderr: String
+    }
+
     static func run(_ launchPath: String, _ arguments: [String], timeout: TimeInterval) async -> Result {
+        let result = await runData(launchPath, arguments, timeout: timeout)
+        return Result(
+            status: result.status,
+            stdout: String(data: result.stdout, encoding: .utf8) ?? "",
+            stderr: result.stderr
+        )
+    }
+
+    static func runData(_ launchPath: String, _ arguments: [String], timeout: TimeInterval) async -> DataResult {
         await withCheckedContinuation { continuation in
             DispatchQueue.global().async {
-                continuation.resume(returning: runBlocking(launchPath, arguments, timeout: timeout))
+                continuation.resume(returning: runDataBlocking(launchPath, arguments, timeout: timeout))
             }
         }
     }
 
-    private static func runBlocking(_ launchPath: String, _ arguments: [String], timeout: TimeInterval) -> Result {
+    private static func runDataBlocking(
+        _ launchPath: String,
+        _ arguments: [String],
+        timeout: TimeInterval
+    ) -> DataResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: launchPath)
         process.arguments = arguments
@@ -42,7 +61,7 @@ enum Proc {
         do {
             try process.run()
         } catch {
-            return Result(status: -1, stdout: "", stderr: error.localizedDescription)
+            return DataResult(status: -1, stdout: Data(), stderr: error.localizedDescription)
         }
 
         let deadline = DispatchTime.now() + timeout
@@ -55,9 +74,9 @@ enum Proc {
         }
 
         _ = drain.wait(timeout: .now() + 3)
-        return Result(
+        return DataResult(
             status: process.terminationStatus,
-            stdout: String(data: outData, encoding: .utf8) ?? "",
+            stdout: outData,
             stderr: String(data: errData, encoding: .utf8) ?? ""
         )
     }

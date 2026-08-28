@@ -56,33 +56,28 @@ final class AndroidCapture: CaptureBackend {
             throw CaptureError.other("Android platform tools are not installed.")
         }
 
-        let token = UUID().uuidString
-        let remotePath = "/data/local/tmp/tethershot-\(token).png"
-        let localURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("tethershot-android-\(token).png")
-        defer { try? FileManager.default.removeItem(at: localURL) }
-
-        Log.shared.log("android: screencap \(deviceID)")
-        let shot = await Proc.run(
+        Log.shared.log("android: direct screencap \(deviceID)")
+        let shot = await Proc.runData(
             adb,
-            ["-s", deviceID, "shell", "screencap", "-p", remotePath],
-            timeout: 15
+            ["-s", deviceID, "exec-out", "screencap", "-p"],
+            timeout: 8
         )
-        guard shot.status == 0 else {
+        guard shot.status == 0, shot.stdout.starts(with: [0x89, 0x50, 0x4E, 0x47]) else {
             throw CaptureError.other(Self.message(from: shot.stderr, fallback: "Android capture failed."))
         }
+        return shot.stdout
+    }
 
-        let pull = await Proc.run(
-            adb,
-            ["-s", deviceID, "pull", remotePath, localURL.path],
-            timeout: 15
-        )
-        _ = await Proc.run(adb, ["-s", deviceID, "shell", "rm", "-f", remotePath], timeout: 5)
-
-        guard pull.status == 0, FileManager.default.fileExists(atPath: localURL.path) else {
-            throw CaptureError.other(Self.message(from: pull.stderr, fallback: "Could not transfer the Android screenshot."))
+    func streamPreview(
+        deviceID: String,
+        relay: VideoSampleBufferRelay,
+        onReady: @escaping @Sendable (CGSize) -> Void
+    ) async throws {
+        guard let adb = Self.adbPath else {
+            throw CaptureError.other("Android platform tools are not installed.")
         }
-        return try Data(contentsOf: localURL)
+        let stream = AndroidH264PreviewStream(adbPath: adb, deviceID: deviceID)
+        try await stream.run(relay: relay, onReady: onReady)
     }
 
     private static func message(from text: String, fallback: String) -> String {

@@ -52,9 +52,11 @@ enum LivePreviewAspectRatio {
 @MainActor
 final class DevicePreviewState: ObservableObject, Identifiable {
     let id: String
+    let videoRelay = VideoSampleBufferRelay()
 
     @Published private(set) var image: NSImage?
     @Published private(set) var phase: LivePreviewPhase = .idle
+    @Published private(set) var videoAspectRatio: CGFloat?
 
     private(set) var latestPNG: Data?
     private(set) var updatedAt: Date?
@@ -64,17 +66,22 @@ final class DevicePreviewState: ObservableObject, Identifiable {
     }
 
     var displayAspectRatio: CGFloat {
+        if let videoAspectRatio { return videoAspectRatio }
         guard let image else { return LivePreviewAspectRatio.portraitFallback }
         return LivePreviewAspectRatio.value(width: image.size.width, height: image.size.height)
     }
 
     func markLoading() {
-        guard image == nil, phase != .loading else { return }
+        guard phase != .loading else { return }
         phase = .loading
     }
 
-    func update(png: Data) {
-        guard let thumbnail = LivePreviewImage.thumbnail(from: png) else {
+    func update(png: Data) async {
+        let thumbnail = await Task.detached(priority: .userInitiated) {
+            LivePreviewImage.thumbnail(from: png)
+        }.value
+        guard phase != .paused else { return }
+        guard let thumbnail else {
             fail("Preview could not be decoded")
             return
         }
@@ -84,12 +91,20 @@ final class DevicePreviewState: ObservableObject, Identifiable {
         if phase != .live { phase = .live }
     }
 
+    func markVideoLive(size: CGSize) {
+        let ratio = LivePreviewAspectRatio.value(width: size.width, height: size.height)
+        if videoAspectRatio != ratio { videoAspectRatio = ratio }
+        if phase != .live { phase = .live }
+    }
+
     func pause() {
         guard phase != .paused else { return }
+        videoRelay.flush()
         phase = .paused
     }
 
     func fail(_ message: String) {
+        videoRelay.flush()
         let next = LivePreviewPhase.failed(message)
         guard phase != next else { return }
         phase = next
