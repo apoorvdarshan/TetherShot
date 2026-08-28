@@ -4,13 +4,117 @@ import Foundation
 enum ConnectionKind: String, Equatable {
     case usb = "USB"
     case wireless = "Wi-Fi"
+    case android = "Android (ADB)"
 }
 
 /// A capturable phone surfaced by a backend.
 struct CaptureDevice: Identifiable, Hashable {
-    let id: String          // stable unique device id
+    let id: String          // stable hardware identity, independent of display name/transport
+    let captureID: String   // backend-specific handle (AVFoundation ID, UDID, or ADB serial)
     let name: String        // e.g. "Apoorv's iPhone"
     let connection: ConnectionKind
+    let availableConnections: [ConnectionKind]
+
+    init(
+        id: String,
+        captureID: String? = nil,
+        name: String,
+        connection: ConnectionKind,
+        availableConnections: [ConnectionKind]? = nil
+    ) {
+        self.id = id
+        self.captureID = captureID ?? id
+        self.name = name
+        self.connection = connection
+        self.availableConnections = availableConnections ?? [connection]
+    }
+}
+
+extension CaptureDevice {
+    var systemImageName: String {
+        switch connection {
+        case .usb: return "cable.connector"
+        case .wireless: return "wifi"
+        case .android: return "apps.iphone"
+        }
+    }
+
+    var platformName: String {
+        connection == .android ? "Android" : "iPhone"
+    }
+
+    var connectionSummary: String {
+        availableConnections.map(\.rawValue).joined(separator: " + ")
+    }
+}
+
+enum DeviceIdentity {
+    static func iOS(rawID: String) -> String {
+        let patterns = [
+            #"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}"#,
+            #"[0-9A-Fa-f]{40}"#,
+        ]
+        for pattern in patterns {
+            if let range = rawID.range(of: pattern, options: .regularExpression) {
+                return "ios:" + rawID[range].lowercased()
+            }
+        }
+        return "ios:" + rawID.lowercased()
+    }
+
+    static func android(androidID: String?, adbSerial: String) -> String {
+        if let androidID {
+            let normalized = androidID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if !normalized.isEmpty, normalized != "null" { return "android:" + normalized }
+        }
+        return "android-adb:" + adbSerial.lowercased()
+    }
+}
+
+enum CaptureDeviceMerger {
+    static func merge(_ devices: [CaptureDevice]) -> [CaptureDevice] {
+        var order: [String] = []
+        var merged: [String: CaptureDevice] = [:]
+
+        for device in devices {
+            guard let current = merged[device.id] else {
+                order.append(device.id)
+                merged[device.id] = device
+                continue
+            }
+
+            let preferred = rank(device.connection) < rank(current.connection) ? device : current
+            let connections = (current.availableConnections + device.availableConnections)
+                .reduce(into: [ConnectionKind]()) { result, connection in
+                    if !result.contains(connection) { result.append(connection) }
+                }
+                .sorted { rank($0) < rank($1) }
+            let name = isFallbackName(current.name) && !isFallbackName(device.name)
+                ? device.name
+                : current.name
+            merged[device.id] = CaptureDevice(
+                id: device.id,
+                captureID: preferred.captureID,
+                name: name,
+                connection: preferred.connection,
+                availableConnections: connections
+            )
+        }
+
+        return order.compactMap { merged[$0] }
+    }
+
+    private static func rank(_ connection: ConnectionKind) -> Int {
+        switch connection {
+        case .usb: return 0
+        case .android: return 1
+        case .wireless: return 2
+        }
+    }
+
+    private static func isFallbackName(_ name: String) -> Bool {
+        name.hasPrefix("iPhone …") || name.hasPrefix("Android …")
+    }
 }
 
 enum CaptureError: Error, LocalizedError {

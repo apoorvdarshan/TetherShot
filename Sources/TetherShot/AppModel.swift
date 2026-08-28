@@ -7,29 +7,44 @@ import AVFoundation
 /// always renders a consistent view.
 @MainActor
 final class AppModel: ObservableObject {
-    @Published var devices: [CaptureDevice] = []
+    @Published var devices: [CaptureDevice] = [] {
+        didSet { reconcileLivePreviews() }
+    }
     @Published var destinationFolder: URL = FolderStore.load()
     @Published var lastStatus: String = ""
     @Published var wirelessReady = false
+    @Published var androidReady = AndroidCapture.adbPath != nil
     @Published var launchAtLogin = LaunchAtLogin.isEnabled
     @Published var organizeByDevice = UserDefaults.standard.bool(forKey: "organizeByDevice")
     @Published var copyToClipboard = (UserDefaults.standard.object(forKey: "copyToClipboard") as? Bool) ?? true
     @Published var showInMenuBar = (UserDefaults.standard.object(forKey: "showInMenuBar") as? Bool) ?? true
+    @Published var showInDock = (UserDefaults.standard.object(forKey: "showInDock") as? Bool) ?? true
+    @Published var livePreviewsEnabled = (UserDefaults.standard.object(forKey: "livePreviewsEnabled") as? Bool) ?? true
     @Published var autoCheckForUpdates = (UserDefaults.standard.object(forKey: "autoCheckForUpdates") as? Bool) ?? true
     @Published var autoInstallUpdates = (UserDefaults.standard.object(forKey: "autoInstallUpdates") as? Bool) ?? false
     @Published var availableUpdate: String?
     @Published private(set) var quickCapturePreference = QuickCapturePreferenceStore.load()
+    @Published private(set) var previewStates: [String: DevicePreviewState] = [:]
+    @Published private(set) var hiddenDevices = HiddenDevicePreferenceStore.load()
 
     let hotKeyDisplay = HotKey.defaultDisplay
     var appVersion: String { updater.currentVersion }
     var quickCaptureSelectionID: String { quickCapturePreference?.id ?? "" }
     var quickCaptureTargetName: String { quickCapturePreference?.name ?? "All connected devices" }
+    var hiddenConnectedDeviceCount: Int {
+        CaptureDeviceVisibility.hiddenConnectedCount(in: discoveredDevices, hidden: hiddenDevices)
+    }
 
     private let usb = USBCapture()
     private let wireless = WirelessCapture()
+    private let android = AndroidCapture()
     private let updater = Updater()
     private var hotKey: HotKey?
     private var isCapturing = false
+    private var previewTasks: [String: Task<Void, Never>] = [:]
+    private var previewWindowVisible = false
+    private var discoveredDevices: [CaptureDevice] = []
+    var dockVisibilityDidChange: ((Bool) -> Void)?
 
     init() {
         Notifier.requestAuthorization()
@@ -45,14 +60,21 @@ final class AppModel: ObservableObject {
     /// Merges USB (AVFoundation, instant) and Wi-Fi (tunneld) device lists.
     func refreshDevices() {
         let usbDevices = usb.discoverDevices()
-        devices = usbDevices                         // show USB immediately
+        applyDiscoveredDevices(usbDevices)            // show USB immediately
         Task {
+            async let wirelessDevices = wireless.discoverDevicesAsync()
+            async let androidDevices = android.discoverDevicesAsync()
             wirelessReady = await wireless.isTunneldRunning()
-            devices = await merged(with: usbDevices)
+            androidReady = AndroidCapture.adbPath != nil
+            applyDiscoveredDevices(usbDevices + (await wirelessDevices) + (await androidDevices))
             if devices.isEmpty {
-                lastStatus = wirelessReady
-                    ? "No iPhone found. Plug in over USB, or check Wi-Fi/same network."
-                    : "Plug in an iPhone over USB and tap Trust."
+                if hiddenConnectedDeviceCount > 0 {
+                    lastStatus = "All connected phones are hidden. Restore one under Hidden Devices."
+                } else {
+                    lastStatus = wirelessReady
+                        ? "No phone found. Connect an iPhone or an authorized Android device."
+                        : "Connect an iPhone over USB, or an Android phone with USB debugging."
+                }
             } else {
                 lastStatus = ""
             }
@@ -60,7 +82,174 @@ final class AppModel: ObservableObject {
     }
 
     private func merged(with usbDevices: [CaptureDevice]) async -> [CaptureDevice] {
-        usbDevices + (await wireless.discoverDevicesAsync())
+        async let wirelessDevices = wireless.discoverDevicesAsync()
+        async let androidDevices = android.discoverDevicesAsync()
+        return usbDevices + (await wirelessDevices) + (await androidDevices)
+    }
+
+    private func applyDiscoveredDevices(_ discovered: [CaptureDevice]) {
+        let merged = CaptureDeviceMerger.merge(discovered)
+        discoveredDevices = merged
+        refreshHiddenDeviceNames(from: merged)
+        devices = CaptureDeviceVisibility.visibleDevices(from: merged, hidden: hiddenDevices)
+        migrateQuickCapturePreferenceIfNeeded()
+    }
+
+    private func refreshHiddenDeviceNames(from devices: [CaptureDevice]) {
+        let names = Dictionary(uniqueKeysWithValues: devices.map { ($0.id, $0.name) })
+        let refreshed = hiddenDevices.map { preference in
+            HiddenDevicePreference(id: preference.id, name: names[preference.id] ?? preference.name)
+        }
+        guard refreshed != hiddenDevices else { return }
+        hiddenDevices = refreshed
+        HiddenDevicePreferenceStore.save(refreshed)
+    }
+
+    private func migrateQuickCapturePreferenceIfNeeded() {
+        guard let preference = quickCapturePreference,
+              case .device(let device) = QuickCaptureTarget.resolve(
+                devices: devices,
+                preference: preference
+              ),
+              preference.id != device.id || preference.name != device.name else { return }
+        let migrated = QuickCaptureDevicePreference(id: device.id, name: device.name)
+        quickCapturePreference = migrated
+        QuickCapturePreferenceStore.save(migrated)
+    }
+
+    func hideDevice(_ device: CaptureDevice) {
+        guard !hiddenDevices.contains(where: { $0.id == device.id }) else { return }
+        hiddenDevices.append(HiddenDevicePreference(id: device.id, name: device.name))
+        HiddenDevicePreferenceStore.save(hiddenDevices)
+        if quickCapturePreference?.id == device.id {
+            quickCapturePreference = nil
+            QuickCapturePreferenceStore.save(nil)
+        }
+        applyDiscoveredDevices(discoveredDevices)
+        lastStatus = "Hidden \(device.name). Restore it anytime under Hidden Devices."
+    }
+
+    func restoreDevice(_ deviceID: String) {
+        guard let preference = hiddenDevices.first(where: { $0.id == deviceID }) else { return }
+        hiddenDevices.removeAll { $0.id == deviceID }
+        HiddenDevicePreferenceStore.save(hiddenDevices)
+        applyDiscoveredDevices(discoveredDevices)
+        lastStatus = "Restored \(preference.name). It will appear whenever it is connected."
+    }
+
+    func restoreAllHiddenDevices() {
+        guard !hiddenDevices.isEmpty else { return }
+        hiddenDevices = []
+        HiddenDevicePreferenceStore.save([])
+        applyDiscoveredDevices(discoveredDevices)
+        lastStatus = "Restored all hidden devices."
+    }
+
+    // MARK: Live previews
+
+    func setPreviewWindowVisible(_ visible: Bool) {
+        guard previewWindowVisible != visible else { return }
+        previewWindowVisible = visible
+        synchronizeLivePreviewTasks()
+    }
+
+    func setLivePreviewsEnabled(_ enabled: Bool) {
+        guard livePreviewsEnabled != enabled else { return }
+        livePreviewsEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: "livePreviewsEnabled")
+        synchronizeLivePreviewTasks()
+        lastStatus = enabled
+            ? "Live device previews enabled."
+            : "Live device previews paused."
+    }
+
+    private func reconcileLivePreviews() {
+        let existing = previewStates
+        var next: [String: DevicePreviewState] = [:]
+        for device in devices {
+            next[device.id] = existing[device.id] ?? DevicePreviewState(id: device.id)
+        }
+        if Set(next.keys) != Set(existing.keys) {
+            previewStates = next
+        }
+        synchronizeLivePreviewTasks()
+    }
+
+    private func synchronizeLivePreviewTasks() {
+        let connectedIDs = Set(devices.map(\.id))
+        let disconnectedIDs = previewTasks.keys.filter { !connectedIDs.contains($0) }
+        for id in disconnectedIDs {
+            previewTasks[id]?.cancel()
+            previewTasks.removeValue(forKey: id)
+        }
+
+        guard livePreviewsEnabled, previewWindowVisible else {
+            for task in previewTasks.values { task.cancel() }
+            previewTasks.removeAll()
+            for state in previewStates.values { state.pause() }
+            return
+        }
+
+        for device in devices where previewTasks[device.id] == nil {
+            previewStates[device.id]?.markLoading()
+            previewTasks[device.id] = Task { [weak self] in
+                await self?.runLivePreviewLoop(deviceID: device.id)
+            }
+        }
+    }
+
+    private func runLivePreviewLoop(deviceID: String) async {
+        while !Task.isCancelled {
+            guard let device = devices.first(where: { $0.id == deviceID }),
+                  let state = previewStates[deviceID] else { return }
+
+            if !isCapturing {
+                state.markLoading()
+                do {
+                    let png: Data
+                    switch device.connection {
+                    case .usb:
+                        guard await cameraAccessForPreview() else {
+                            state.fail("Camera permission needed")
+                            try? await Task.sleep(nanoseconds: 8_000_000_000)
+                            continue
+                        }
+                        png = try await usb.capture(deviceID: device.captureID)
+                    case .wireless:
+                        png = try await wireless.capture(deviceID: device.captureID)
+                    case .android:
+                        png = try await android.capture(deviceID: device.captureID)
+                    }
+                    if !Task.isCancelled { state.update(png: png) }
+                } catch {
+                    if !Task.isCancelled { state.fail(Self.previewErrorMessage(error)) }
+                }
+            }
+
+            try? await Task.sleep(
+                nanoseconds: LivePreviewRefreshPolicy.intervalNanoseconds(for: device.connection)
+            )
+        }
+    }
+
+    private func cameraAccessForPreview() async -> Bool {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            return true
+        case .notDetermined:
+            NSApp.activate(ignoringOtherApps: true)
+            return await AVCaptureDevice.requestAccess(for: .video)
+        case .denied, .restricted:
+            return false
+        @unknown default:
+            return false
+        }
+    }
+
+    private static func previewErrorMessage(_ error: Error) -> String {
+        let message = error.localizedDescription
+        if message.count <= 52 { return message }
+        return String(message.prefix(49)) + "…"
     }
 
     // MARK: Capture
@@ -80,12 +269,12 @@ final class AppModel: ObservableObject {
     func hotKeyCapture() {
         Task {
             let list = await merged(with: usb.discoverDevices())
-            devices = list
+            applyDiscoveredDevices(list)
 
-            switch QuickCaptureTarget.resolve(devices: list, preference: quickCapturePreference) {
+            switch QuickCaptureTarget.resolve(devices: devices, preference: quickCapturePreference) {
             case .all(let devices):
                 guard !devices.isEmpty else {
-                    lastStatus = "Quick capture: no iPhone found"
+                    lastStatus = "Quick capture: no visible phone found"
                     NSSound(named: "Funk")?.play()
                     return
                 }
@@ -105,18 +294,27 @@ final class AppModel: ObservableObject {
         lastStatus = "Capturing \(device.name)…"
         Log.shared.log("performCapture: '\(device.name)' [\(device.connection.rawValue)] -> \(destinationFolder.path)")
         do {
+            let maximumAge = LivePreviewRefreshPolicy.maximumFrameAge(for: device.connection)
             let png: Data
-            switch device.connection {
-            case .usb:
-                guard await ensureCameraAccess() else {
-                    if lastStatus.hasPrefix("Capturing") {
-                        lastStatus = "Camera permission needed — grant it, then retry."
+            if livePreviewsEnabled,
+               previewWindowVisible,
+               let recent = previewStates[device.id]?.recentPNG(maximumAge: maximumAge) {
+                png = recent
+            } else {
+                switch device.connection {
+                case .usb:
+                    guard await ensureCameraAccess() else {
+                        if lastStatus.hasPrefix("Capturing") {
+                            lastStatus = "Camera permission needed — grant it, then retry."
+                        }
+                        return
                     }
-                    return
+                    png = try await usb.capture(deviceID: device.captureID)
+                case .wireless:
+                    png = try await wireless.capture(deviceID: device.captureID)
+                case .android:
+                    png = try await android.capture(deviceID: device.captureID)
                 }
-                png = try await usb.capture(deviceID: device.id)
-            case .wireless:
-                png = try await wireless.capture(deviceID: device.id)
             }
             try save(png: png, device: device)
         } catch {
@@ -205,6 +403,16 @@ final class AppModel: ObservableObject {
             : "Menu-bar icon hidden. Reopen TetherShot from Applications or Spotlight."
     }
 
+    func setShowInDock(_ enabled: Bool) {
+        guard showInDock != enabled else { return }
+        showInDock = enabled
+        UserDefaults.standard.set(enabled, forKey: "showInDock")
+        dockVisibilityDidChange?(enabled)
+        lastStatus = enabled
+            ? "Dock icon enabled."
+            : "Dock icon hidden. Use the menu bar, Spotlight, or \(hotKeyDisplay) to return."
+    }
+
     func setAutoCheckForUpdates(_ enabled: Bool) {
         autoCheckForUpdates = enabled
         UserDefaults.standard.set(enabled, forKey: "autoCheckForUpdates")
@@ -280,6 +488,12 @@ final class AppModel: ObservableObject {
                 : "Wireless setup failed: \(result.stderr.split(whereSeparator: \.isNewline).first.map(String.init) ?? "unknown")"
             refreshDevices()
         }
+    }
+
+    func openAndroidSetup() {
+        guard let url = URL(string: "https://developer.android.com/tools/releases/platform-tools") else { return }
+        NSWorkspace.shared.open(url)
+        lastStatus = "Install Android Platform Tools, enable USB debugging, then refresh devices."
     }
 
     // MARK: Folder

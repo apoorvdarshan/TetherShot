@@ -1,6 +1,6 @@
 import Foundation
 
-/// The iPhone the global quick-capture hotkey should use. A `nil`
+/// The phone the global quick-capture hotkey should use. A `nil`
 /// preference preserves the original behavior of capturing every connected
 /// device.
 struct QuickCaptureDevicePreference: Equatable {
@@ -14,7 +14,7 @@ enum QuickCapturePreferenceStore {
 
     static func load(defaults: UserDefaults = .standard) -> QuickCaptureDevicePreference? {
         guard let id = defaults.string(forKey: idKey), !id.isEmpty else { return nil }
-        let name = defaults.string(forKey: nameKey) ?? "Selected iPhone"
+        let name = defaults.string(forKey: nameKey) ?? "Selected phone"
         return QuickCaptureDevicePreference(id: id, name: name)
     }
 
@@ -44,7 +44,11 @@ enum QuickCaptureTarget: Equatable {
         preference: QuickCaptureDevicePreference?
     ) -> QuickCaptureTarget {
         guard let preference else { return .all(devices) }
-        guard let device = devices.first(where: { $0.id == preference.id }) else {
+        guard let device = devices.first(where: {
+            $0.id == preference.id
+                || $0.captureID == preference.id
+                || $0.id == DeviceIdentity.iOS(rawID: preference.id)
+        }) else {
             return .preferredDeviceUnavailable
         }
         return .device(device)

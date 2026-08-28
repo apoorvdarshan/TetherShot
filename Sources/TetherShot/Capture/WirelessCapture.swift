@@ -56,22 +56,20 @@ final class WirelessCapture: CaptureBackend {
         []
     }
 
-    /// Surfaces only devices that are reachable WITHOUT a USB interface — i.e.
-    /// pure Wi-Fi. USB-attached phones are handled by the faster AVFoundation
-    /// backend, so this avoids showing the same phone twice.
+    /// Surfaces every tunneled iPhone. AppModel merges matching hardware IDs,
+    /// advertises both transports, and prefers native USB capture when present.
     func discoverDevicesAsync() async -> [CaptureDevice] {
         guard let tunnels = await tunneldDevices() else { return [] }
         let names = await deviceNames()
         var devices: [CaptureDevice] = []
         for (udid, interfaces) in tunnels where !interfaces.isEmpty {
-            // A USB tunnel interface ends in "-USB" (e.g. "usbmux-<udid>-USB").
-            // Match the suffix, NOT a bare "usb" substring — otherwise the Wi-Fi
-            // interface "usbmux-<udid>-Network" (which contains "usb" inside
-            // "usbmux") would be wrongly treated as USB and hidden.
-            let hasUSB = interfaces.contains { $0.uppercased().hasSuffix("-USB") }
-            if hasUSB { continue }                       // USB → AVFoundation handles it
             let name = names[udid] ?? nameCache[udid] ?? "iPhone …\(udid.suffix(5))"
-            devices.append(CaptureDevice(id: udid, name: name, connection: .wireless))
+            devices.append(CaptureDevice(
+                id: DeviceIdentity.iOS(rawID: udid),
+                captureID: udid,
+                name: name,
+                connection: .wireless
+            ))
         }
         return devices
     }

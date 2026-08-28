@@ -115,10 +115,10 @@
     <div class="flist">
       <div class="frow reveal"><div class="fnum">01</div><h3>USB capture</h3><div class="fdesc">A trusted, cabled iPhone shows up as a screen source. Native AVFoundation grabs the real, full-resolution frame — no QuickTime dance.</div></div>
       <div class="frow reveal"><div class="fnum">02</div><h3>Wi-Fi capture</h3><div class="fdesc">Capture wirelessly over your local network through Apple's developer-services tunnel — same pixel-perfect frame, even when the phone is locked.</div></div>
-      <div class="frow reveal"><div class="fnum">03</div><h3>Straight to clipboard</h3><div class="fdesc">Every capture is copied and ready to paste into chat, docs, or an editor. Toggle it off whenever you like.</div></div>
-      <div class="frow reveal"><div class="fnum">04</div><h3>Global hotkey</h3><div class="fdesc">Press <span class="kbd">⌘⇧7</span> from anywhere. Capture every connected device by default, or choose one preferred iPhone and TetherShot remembers it.</div></div>
-      <div class="frow reveal"><div class="fnum">05</div><h3>Your folder, your rules</h3><div class="fdesc">Pick any destination. Timestamped filenames, optional per-device subfolders, remembered across launches.</div></div>
-      <div class="frow reveal"><div class="fnum">06</div><h3>Signed in-app updates</h3><div class="fdesc">Built-in “Check for Updates” verifies the latest notarized GitHub release, replaces the installed app in place, and relaunches—without Node.js or Xcode.</div></div>
+      <div class="frow reveal"><div class="fnum">03</div><h3>Full-size live preview</h3><div class="fdesc">Select a connected phone and see its current screen at near-full window size. Preview work pauses automatically when the app window closes.</div></div>
+      <div class="frow reveal"><div class="fnum">04</div><h3>Android through ADB</h3><div class="fdesc">Authorized Android phones appear beside iPhones and use the native screencap framebuffer over USB or wireless debugging.</div></div>
+      <div class="frow reveal"><div class="fnum">05</div><h3>Straight to clipboard</h3><div class="fdesc">Every capture is copied and ready to paste into chat, docs, or an editor. Toggle it off whenever you like.</div></div>
+      <div class="frow reveal"><div class="fnum">06</div><h3>Stable device choices</h3><div class="fdesc">USB and Wi-Fi appearances merge into one phone. Preferred and hidden-device choices survive reconnects and display-name changes.</div></div>
     </div>
   </div>
 </section>
@@ -266,7 +266,7 @@ pymobiledevice3 lockdown \
       <details class="reveal"><summary>Is my data sent anywhere?</summary><p>No. Screenshots are written straight to your local folder and clipboard. No analytics, no account, no server. See the <a href="/privacy">Privacy Policy</a>.</p></details>
       <details class="reveal"><summary>Why does it ask for Camera permission?</summary><p>For USB capture, macOS exposes the iPhone's mirrored screen through the AVFoundation (camera) pipeline, so it's gated by the Camera privacy bucket. TetherShot never uses your Mac's camera.</p></details>
       <details class="reveal"><summary>Homebrew, DMG, or npm—which should I use?</summary><p>Use Homebrew for the easiest verified install and upgrades, or the signed universal DMG for drag-and-drop. Choose npm if you also want the CLI, Wi-Fi setup commands, or a source-built app.</p></details>
-      <details class="reveal"><summary>Does it support Android?</summary><p>Not today — TetherShot is iPhone-only by design. Android via <code>adb</code> is a possible future direction.</p></details>
+      <details class="reveal"><summary>Does it support Android?</summary><p>Yes. Install Android Platform Tools, enable USB or wireless debugging, authorize the Mac, and refresh devices. TetherShot uses <code>adb screencap</code> locally.</p></details>
     </div>
   </div>
 </section>

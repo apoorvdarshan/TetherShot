@@ -44,7 +44,14 @@ final class USBCapture: NSObject, CaptureBackend {
            !found.contains(fallback) {
             found.append(fallback)
         }
-        return found.map { CaptureDevice(id: $0.uniqueID, name: $0.localizedName, connection: .usb) }
+        return found.map {
+            CaptureDevice(
+                id: DeviceIdentity.iOS(rawID: $0.uniqueID),
+                captureID: $0.uniqueID,
+                name: $0.localizedName,
+                connection: .usb
+            )
+        }
     }
 
     func capture(deviceID: String) async throws -> Data {

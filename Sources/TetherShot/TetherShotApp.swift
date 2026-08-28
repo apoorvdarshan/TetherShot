@@ -9,9 +9,10 @@ struct TetherShotApp: App {
     var body: some Scene {
         Window("TetherShot", id: "main") {
             MainWindow(model: model, appDelegate: appDelegate)
-                .frame(width: 620, height: 680)
+                .frame(minWidth: 760, idealWidth: 1040, minHeight: 640, idealHeight: 820)
         }
-        .windowResizability(.contentSize)
+        .defaultSize(width: 1040, height: 820)
+        .windowResizability(.contentMinSize)
         .commands { CommandGroup(replacing: .newItem) {} }
 
         MenuBarExtra(
@@ -34,6 +35,7 @@ struct TetherShotApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private weak var mainWindow: NSWindow?
+    private weak var appModel: AppModel?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if AppInstallation.relaunchCanonicalCopyIfNeeded() { return }
@@ -48,23 +50,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
+        appModel?.setPreviewWindowVisible(false)
         sender.orderOut(nil)
-        NSApp.setActivationPolicy(.accessory)
+        applyDockPreference()
         return false
     }
 
-    func attach(to window: NSWindow?) {
+    func windowDidMiniaturize(_ notification: Notification) {
+        appModel?.setPreviewWindowVisible(false)
+    }
+
+    func windowDidDeminiaturize(_ notification: Notification) {
+        appModel?.setPreviewWindowVisible(true)
+    }
+
+    func attach(to window: NSWindow?, model: AppModel) {
         guard let window else { return }
         let isNewWindow = mainWindow !== window
         mainWindow = window
+        appModel = model
+        model.dockVisibilityDidChange = { [weak self] _ in self?.applyDockPreference() }
         window.delegate = self
         if isNewWindow { showMainWindow() }
     }
 
     func showMainWindow() {
-        NSApp.setActivationPolicy(.regular)
+        applyDockPreference()
         mainWindow?.makeKeyAndOrderFront(nil)
+        appModel?.setPreviewWindowVisible(true)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func applyDockPreference() {
+        NSApp.setActivationPolicy((appModel?.showInDock ?? true) ? .regular : .accessory)
     }
 }
 

@@ -80,12 +80,13 @@
     <p class="updated">TetherShot · native macOS utility · MIT licensed</p>
 
     <h2 id="overview">Overview</h2>
-    <p>TetherShot is a native macOS app with an optional menu-bar controller. It captures <strong>pixel-perfect screenshots of an iPhone</strong> and saves them to a folder you choose (optionally copying each to your clipboard). It supports two capture paths:</p>
+    <p>TetherShot is a native macOS app with an optional menu-bar controller. It shows large live previews and captures <strong>pixel-perfect screenshots of iPhone and Android devices</strong>, saving them to a folder you choose and optionally copying each to your clipboard.</p>
     <ul>
       <li><strong>USB</strong> — a trusted, cabled iPhone is exposed to macOS as a screen source via AVFoundation. Instant, no extra setup.</li>
       <li><strong>Wi-Fi</strong> — cable-free capture over your local network using Apple's developer-services tunnel (powered by <a href="https://github.com/doronz88/pymobiledevice3" target="_blank" rel="noopener">pymobiledevice3</a>). Requires a one-time setup.</li>
+      <li><strong>Android</strong> — USB or wireless-debugging capture through Google's Android Debug Bridge. Requires Android Platform Tools and debugging authorization.</li>
     </ul>
-    <p>TetherShot opens as a compact Mac app with an optional menu-bar control. Closing its window removes the Dock icon while capture, updates, and the global hotkey keep running in the background.</p>
+    <p>TetherShot has dedicated Live Preview, Capture &amp; Save, Settings, and About pages. Dock and menu-bar visibility are independently configurable; background capture, updates, and the global hotkey can remain active after the window closes.</p>
 
     <h2 id="requirements">Requirements</h2>
     <ul>
@@ -94,6 +95,7 @@
       <li><strong>Node.js 18+</strong> — only needed for npm installation.</li>
       <li>An <strong>iPhone</strong> you can set to <em>Trust This Computer</em>.</li>
       <li>For Wi-Fi: the iPhone and Mac on the <strong>same network</strong>, plus <a href="https://github.com/doronz88/pymobiledevice3" target="_blank" rel="noopener">pymobiledevice3</a>.</li>
+      <li>For Android: <a href="https://developer.android.com/tools/releases/platform-tools" target="_blank" rel="noopener">Android Platform Tools</a> and USB or wireless debugging enabled.</li>
     </ul>
 
     <h2 id="install">Install</h2>
@@ -165,7 +167,10 @@ pymobiledevice3 lockdown wifi-connections --state on</pre>
       <li><strong>Copy to Clipboard</strong> <em>(on by default)</em> — also place each capture on the clipboard, ready to paste.</li>
       <li><strong>Organize by Device</strong> — save into a per-device subfolder.</li>
       <li><strong>Choose Folder…</strong> — pick any destination; the choice is remembered.</li>
-      <li><strong>Quick Capture Device</strong> — choose one iPhone for the global hotkey, or keep the default “All connected devices.” The selection persists across launches.</li>
+      <li><strong>Quick Capture Device</strong> — choose one phone for the global hotkey, or keep the default “All connected devices.” The stable selection persists across reconnects, transports, and display-name changes.</li>
+      <li><strong>Live Previews</strong> — show one selected phone at near-full window size. Preview work pauses when the window closes.</li>
+      <li><strong>Hidden Devices</strong> — exclude an unwanted phone from previews, the hotkey, and Screenshot All; restore it later even after reconnecting.</li>
+      <li><strong>Show in Dock / Show in Menu Bar</strong> — control both app entry points independently.</li>
       <li><strong>Quick capture</strong> — press <span class="kbd">⌘⇧7</span> anywhere to capture the saved target without opening the menu.</li>
       <li><strong>Launch at Login</strong> — keep TetherShot in your menu bar across reboots.</li>
       <li><strong>Auto-check for Updates</strong> — quietly check GitHub for newer signed releases.</li>

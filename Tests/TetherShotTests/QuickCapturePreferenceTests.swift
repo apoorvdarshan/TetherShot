@@ -40,6 +40,22 @@ final class QuickCapturePreferenceTests: XCTestCase {
         )
     }
 
+    func testLegacyRawIPhoneIDStillFindsCanonicalDevice() {
+        let udid = "00008110-001234567890001E"
+        let device = CaptureDevice(
+            id: DeviceIdentity.iOS(rawID: udid),
+            captureID: udid,
+            name: "Apoorv’s iPhone",
+            connection: .wireless
+        )
+        let legacyPreference = QuickCaptureDevicePreference(id: udid, name: "Old name")
+
+        XCTAssertEqual(
+            QuickCaptureTarget.resolve(devices: [device], preference: legacyPreference),
+            .device(device)
+        )
+    }
+
     private func sampleDevices() -> [CaptureDevice] {
         [
             CaptureDevice(id: "phone-1", name: "Personal iPhone", connection: .usb),

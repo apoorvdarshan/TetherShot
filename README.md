@@ -4,7 +4,7 @@
 
 <h1>TetherShot</h1>
 
-<strong>Screenshot your iPhone from a compact Mac app or the menu bar.</strong>
+<strong>See and capture your iPhone or Android screen from a native Mac app.</strong>
 
 <p>USB or Wi-Fi · pixel-perfect captures · saved to a folder you choose · copied to your clipboard.</p>
 
@@ -39,21 +39,24 @@
 
 ---
 
-> **Status — shipping.** USB + Wi-Fi capture, clipboard, global hotkey, per-device folders, Homebrew and npm installs, and in-app self-update are all working. Built and tested on macOS 26 (Tahoe) with iOS 26.
+> **Status — shipping.** iPhone USB/Wi-Fi capture, Android ADB capture, live previews, clipboard, global hotkey, per-device folders, Homebrew and npm installs, and in-app self-update are working. Built and tested on macOS 26 (Tahoe) with iOS 26.
 
 ## Why TetherShot
 
-macOS already lets QuickTime/OBS mirror a tethered iPhone's *screen* (it appears as an `AVCaptureDevice` of media type `.muxed`). TetherShot wraps that into a one-click menu-bar capture that writes straight to disk and your clipboard — and adds **cable-free Wi-Fi capture** through Apple's developer-services tunnel. It's the iPhone screenshot tool Apple never shipped.
+macOS already exposes a tethered iPhone's screen as an AVFoundation source, while Android exposes its framebuffer through ADB. TetherShot turns both into a focused live-preview and one-click capture workflow that writes straight to disk and your clipboard — including cable-free iPhone Wi-Fi capture through Apple's developer-services tunnel.
 
 ## Features
 
 - 🔌 **USB capture** — a trusted, cabled iPhone is grabbed at full resolution via native AVFoundation. Instant, zero setup.
 - 📶 **Wi-Fi capture** — cable-free over your local network via a RemoteXPC tunnel ([`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3)). Pixel-perfect, even when the phone is locked.
+- 🤖 **Android capture** — discover authorized Android phones through ADB and capture their native framebuffer over USB or wireless debugging.
+- ▶️ **Large live preview** — select any connected phone and view it at near-full window size; previews pause automatically when the window closes.
+- 🪪 **Stable device identity** — USB/Wi-Fi appearances of the same phone are merged, names can change safely, and hidden/quick-capture choices persist.
 - 📋 **Clipboard** — every capture is copied, ready to paste (toggle on by default).
 - ⌨️ **Global hotkey** — press <kbd>⌘⇧7</kbd> anywhere to capture every connected device, or choose one preferred iPhone and remember it across launches.
 - 🗂️ **Your folder, your rules** — any destination, timestamped filenames, optional per-device subfolders.
 - ⬆️ **Self-updating** — in-app **Check for Updates** downloads the signed, notarized GitHub release, verifies it, replaces the current app in place, and relaunches.
-- 🪟 **Compact Mac app** — open it from Applications or Spotlight; closing the window keeps capture running and removes the Dock icon.
+- 🧭 **Navigable Mac app** — dedicated Live Preview, Capture & Save, Settings, and About pages; the Dock and menu-bar presence are independently configurable.
 - 🍥 **Optional menu-bar control** — enabled by default for quick capture and settings, and can be hidden persistently.
 - 🚀 **Launch at login** — keeps capture and the global hotkey ready in the background.
 - 🔒 **Local-first** — no account, no analytics, no servers. Screenshots never leave your Mac.
@@ -65,6 +68,7 @@ macOS already lets QuickTime/OBS mirror a tethered iPhone's *screen* (it appears
 - **Node.js 18+** — only needed for npm installation
 - An **iPhone** you can set to *Trust This Computer*
 - For Wi-Fi: iPhone + Mac on the same network, plus [`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3)
+- For Android: [Android Platform Tools](https://developer.android.com/tools/releases/platform-tools) and USB debugging or wireless debugging enabled
 
 ## Installation
 
@@ -116,12 +120,15 @@ Open TetherShot from Applications or Spotlight, or click its menu-bar icon, then
 
 | Option | What it does |
 |---|---|
-| <kbd>⌘⇧7</kbd> | Quick-capture the saved preferred iPhone, or every connected device by default |
-| **Quick Capture Device** | Choose one iPhone for the hotkey; the selection persists across launches |
+| <kbd>⌘⇧7</kbd> | Quick-capture the saved preferred phone, or every visible connected device by default |
+| **Quick Capture Device** | Choose one phone for the hotkey; the stable selection persists across names and transports |
+| **Live Previews** | Show the selected phone at full size while the app window is visible |
+| **Hidden Devices** | Exclude unwanted phones from previews and captures, then restore them at any time |
 | **Copy to Clipboard** | Also place each capture on the clipboard (default on) |
 | **Organize by Device** | Save into a per-device subfolder |
 | **Choose Folder…** | Pick any destination; remembered across launches |
 | **Show in Menu Bar** | Keep quick controls in the menu bar (default on) |
+| **Show in Dock** | Independently show or hide TetherShot in the Dock |
 | **Launch at Login** | Keep TetherShot available across reboots |
 | **Check for Updates** | Verify the latest signed GitHub DMG, replace the current app, and relaunch |
 
@@ -160,10 +167,12 @@ tethershot version    # print the installed version
 |---|---|
 | `USBCapture` | Flips the CoreMediaIO screen-capture flag, finds the iPhone as a `.muxed` device, grabs one frame → PNG |
 | `WirelessCapture` | Talks to the `tunneld` HTTP API, runs `pymobiledevice3 developer dvt screenshot` over the Wi-Fi tunnel |
+| `AndroidCapture` | Uses ADB device discovery, stable Android IDs, and native `screencap` PNG transfer |
+| `LivePreview` | Maintains efficient per-device preview state while the window is visible |
 | `Updater` | Checks GitHub Releases, verifies the asset digest and Developer ID signature, then atomically replaces and relaunches the current app |
 | `AppModel` | Main-actor state: device list, destination folder, options, status |
 | `MainWindow` / `MenuContent` | Compact SwiftUI app window plus optional `MenuBarExtra` controls |
-| `TetherShotApp` | Window lifecycle: closing hides the Dock presence while background capture stays alive |
+| `TetherShotApp` | Window lifecycle and independent Dock/menu-bar visibility while background capture stays alive |
 
 Capture backends sit behind a `CaptureBackend` protocol, so USB and Wi-Fi share one code path. The marketing/docs site lives in [`/web`](web) and deploys to [tethershot.apoorvdarshan.com](https://tethershot.apoorvdarshan.com).
 

@@ -18,7 +18,7 @@ struct QuickCaptureDevicePicker: View {
             }
 
             ForEach(model.devices) { device in
-                Text("\(device.name) · \(device.connection.rawValue)").tag(device.id)
+                Text("\(device.name) · \(device.connectionSummary)").tag(device.id)
             }
         }
         .accessibilityLabel("Quick Capture Device")

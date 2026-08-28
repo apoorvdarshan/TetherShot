@@ -11,10 +11,10 @@ struct MenuContent: View {
         Divider()
 
         if model.devices.isEmpty {
-            Text("No iPhone detected")
+            Text("No phone detected")
         } else {
             ForEach(model.devices) { device in
-                Button("📸  \(device.name) (\(device.connection.rawValue))") {
+                Button("📸  \(device.name) (\(device.connectionSummary))") {
                     model.capture(device)
                 }
             }
@@ -24,6 +24,24 @@ struct MenuContent: View {
         }
         QuickCaptureDevicePicker(model: model)
         Text("Quick capture: \(model.hotKeyDisplay)")
+        if !model.devices.isEmpty {
+            Menu("Hide Device") {
+                ForEach(model.devices) { device in
+                    Button("Hide \(device.name)") { model.hideDevice(device) }
+                }
+            }
+        }
+        if !model.hiddenDevices.isEmpty {
+            Menu("Hidden Devices") {
+                ForEach(model.hiddenDevices) { device in
+                    Button("Restore \(device.name)") { model.restoreDevice(device.id) }
+                }
+                if model.hiddenDevices.count > 1 {
+                    Divider()
+                    Button("Restore All") { model.restoreAllHiddenDevices() }
+                }
+            }
+        }
 
         Divider()
 
@@ -47,6 +65,10 @@ struct MenuContent: View {
             get: { model.copyToClipboard },
             set: { model.setCopyToClipboard($0) }
         ))
+        Toggle("Live Device Previews", isOn: Binding(
+            get: { model.livePreviewsEnabled },
+            set: { model.setLivePreviewsEnabled($0) }
+        ))
 
         Divider()
 
@@ -57,6 +79,10 @@ struct MenuContent: View {
         Toggle("Show in Menu Bar", isOn: Binding(
             get: { model.showInMenuBar },
             set: { model.setShowInMenuBar($0) }
+        ))
+        Toggle("Show in Dock", isOn: Binding(
+            get: { model.showInDock },
+            set: { model.setShowInDock($0) }
         ))
 
         Divider()
