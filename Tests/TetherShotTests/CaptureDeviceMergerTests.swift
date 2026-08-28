@@ -2,7 +2,7 @@ import XCTest
 @testable import TetherShot
 
 final class CaptureDeviceMergerTests: XCTestCase {
-    func testSameIPhoneOverUSBAndWiFiAppearsOnceAndPrefersUSB() {
+    func testSameIPhoneOverUSBAndWiFiAppearsOnceAndPrefersWiFi() {
         let udid = "00008110-001234567890001E"
         let devices = [
             CaptureDevice(
@@ -22,10 +22,10 @@ final class CaptureDeviceMergerTests: XCTestCase {
         let merged = CaptureDeviceMerger.merge(devices)
 
         XCTAssertEqual(merged.count, 1)
-        XCTAssertEqual(merged[0].connection, .usb)
-        XCTAssertEqual(merged[0].captureID, "AVCapture-\(udid)")
+        XCTAssertEqual(merged[0].connection, .wireless)
+        XCTAssertEqual(merged[0].captureID, udid)
         XCTAssertEqual(merged[0].name, "Apoorv’s iPhone")
-        XCTAssertEqual(merged[0].availableConnections, [.usb, .wireless])
+        XCTAssertEqual(merged[0].availableConnections, [.wireless, .usb])
     }
 
     func testAndroidIdentityUsesHardwareIDInsteadOfTransportSerial() {
@@ -35,7 +35,7 @@ final class CaptureDeviceMergerTests: XCTestCase {
         )
     }
 
-    func testSamePhysicalAndroidOverUSBAndWiFiAppearsOnceAndPrefersUSB() {
+    func testSamePhysicalAndroidOverUSBAndWiFiAppearsOnceAndPrefersWiFi() {
         let stableID = "android:2b0ebf54c47846e6"
         let merged = CaptureDeviceMerger.merge([
             CaptureDevice(
@@ -53,8 +53,8 @@ final class CaptureDeviceMergerTests: XCTestCase {
         ])
 
         XCTAssertEqual(merged.count, 1)
-        XCTAssertEqual(merged[0].captureID, "10BE6L202X000AZ")
-        XCTAssertEqual(merged[0].connection, .androidUSB)
-        XCTAssertEqual(merged[0].availableConnections, [.androidUSB, .androidWireless])
+        XCTAssertEqual(merged[0].captureID, "192.168.1.10:5555")
+        XCTAssertEqual(merged[0].connection, .androidWireless)
+        XCTAssertEqual(merged[0].availableConnections, [.androidWireless, .androidUSB])
     }
 }
