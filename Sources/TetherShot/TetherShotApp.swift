@@ -49,19 +49,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return true
     }
 
+    func applicationDidHide(_ notification: Notification) {
+        synchronizePreviewVisibility()
+    }
+
+    func applicationDidUnhide(_ notification: Notification) {
+        synchronizePreviewVisibility()
+    }
+
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        appModel?.setPreviewWindowVisible(false)
         sender.orderOut(nil)
+        synchronizePreviewVisibility(for: sender)
         applyDockPreference()
         return false
     }
 
     func windowDidMiniaturize(_ notification: Notification) {
-        appModel?.setPreviewWindowVisible(false)
+        synchronizePreviewVisibility(for: notification.object as? NSWindow)
     }
 
     func windowDidDeminiaturize(_ notification: Notification) {
-        appModel?.setPreviewWindowVisible(true)
+        synchronizePreviewVisibility(for: notification.object as? NSWindow)
+    }
+
+    func windowDidChangeOcclusionState(_ notification: Notification) {
+        synchronizePreviewVisibility(for: notification.object as? NSWindow)
     }
 
     func attach(to window: NSWindow?, model: AppModel) {
@@ -76,13 +88,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func showMainWindow() {
         applyDockPreference()
-        mainWindow?.makeKeyAndOrderFront(nil)
-        appModel?.setPreviewWindowVisible(true)
         NSApp.activate(ignoringOtherApps: true)
+        mainWindow?.makeKeyAndOrderFront(nil)
+        synchronizePreviewVisibility()
     }
 
     private func applyDockPreference() {
         NSApp.setActivationPolicy((appModel?.showInDock ?? true) ? .regular : .accessory)
+    }
+
+    private func synchronizePreviewVisibility(for window: NSWindow? = nil) {
+        guard let window = window ?? mainWindow else {
+            appModel?.setPreviewWindowVisible(false)
+            return
+        }
+        let visible = PreviewActivityPolicy.windowAllowsPreview(
+            isVisible: window.isVisible,
+            isMiniaturized: window.isMiniaturized,
+            occlusionIsVisible: window.occlusionState.contains(.visible),
+            appIsHidden: NSApp.isHidden
+        )
+        appModel?.setPreviewWindowVisible(visible)
     }
 }
 

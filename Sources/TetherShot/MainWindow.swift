@@ -130,7 +130,11 @@ private struct LivePreviewPage: View {
             }
         }
         .padding(18)
-        .onAppear(perform: synchronizeSelection)
+        .onAppear {
+            synchronizeSelection()
+            model.setPreviewPageVisible(true)
+        }
+        .onDisappear { model.setPreviewPageVisible(false) }
         .onChange(of: model.devices.map(\.id)) { _, _ in synchronizeSelection() }
     }
 

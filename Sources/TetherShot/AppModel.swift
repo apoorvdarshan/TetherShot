@@ -43,6 +43,7 @@ final class AppModel: ObservableObject {
     private var isCapturing = false
     private var previewTasks: [String: Task<Void, Never>] = [:]
     private var previewWindowVisible = false
+    private var previewPageVisible = false
     private var discoveredDevices: [CaptureDevice] = []
     var dockVisibilityDidChange: ((Bool) -> Void)?
 
@@ -158,6 +159,12 @@ final class AppModel: ObservableObject {
         synchronizeLivePreviewTasks()
     }
 
+    func setPreviewPageVisible(_ visible: Bool) {
+        guard previewPageVisible != visible else { return }
+        previewPageVisible = visible
+        synchronizeLivePreviewTasks()
+    }
+
     func setLivePreviewsEnabled(_ enabled: Bool) {
         guard livePreviewsEnabled != enabled else { return }
         livePreviewsEnabled = enabled
@@ -188,7 +195,11 @@ final class AppModel: ObservableObject {
             previewTasks.removeValue(forKey: id)
         }
 
-        guard livePreviewsEnabled, previewWindowVisible else {
+        guard PreviewActivityPolicy.shouldRun(
+            previewsEnabled: livePreviewsEnabled,
+            windowIsVisible: previewWindowVisible,
+            previewPageIsVisible: previewPageVisible
+        ) else {
             for task in previewTasks.values { task.cancel() }
             previewTasks.removeAll()
             for state in previewStates.values { state.pause() }
