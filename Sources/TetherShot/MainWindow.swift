@@ -113,7 +113,7 @@ private struct LivePreviewPage: View {
         VStack(alignment: .leading, spacing: 14) {
             PageHeader(
                 title: "Live Preview",
-                detail: "See the selected phone at full size and capture its latest frame"
+                detail: "Watch connected phones live and capture their latest frames"
             ) {
                 Toggle("Live", isOn: Binding(
                     get: { model.livePreviewsEnabled },
@@ -126,101 +126,12 @@ private struct LivePreviewPage: View {
             if model.devices.isEmpty {
                 emptyState
             } else {
-                deviceSelector
-
-                if let device = selectedDevice,
-                   let preview = model.previewStates[device.id] {
-                    FullDevicePreview(
-                        device: device,
-                        preview: preview,
-                        previewsEnabled: model.livePreviewsEnabled
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                    previewActions(for: device)
-                }
+                LivePreviewWorkspace(model: model, selectedDeviceID: $selectedDeviceID)
             }
         }
         .padding(18)
         .onAppear(perform: synchronizeSelection)
         .onChange(of: model.devices.map(\.id)) { _, _ in synchronizeSelection() }
-    }
-
-    private var selectedDevice: CaptureDevice? {
-        model.devices.first(where: { $0.id == selectedDeviceID }) ?? model.devices.first
-    }
-
-    private var deviceSelector: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 8) {
-                ForEach(model.devices) { device in
-                    Button {
-                        selectedDeviceID = device.id
-                    } label: {
-                        HStack(spacing: 7) {
-                            Image(systemName: device.systemImageName)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(device.name)
-                                    .font(.system(size: 11.5, weight: .semibold))
-                                Text(device.connectionSummary)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(
-                            selectedDevice?.id == device.id
-                                ? TetherShotTheme.accent.opacity(0.18)
-                                : Color(nsColor: .controlBackgroundColor),
-                            in: RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        )
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .stroke(
-                                    selectedDevice?.id == device.id
-                                        ? TetherShotTheme.accent.opacity(0.7)
-                                        : Color(nsColor: .separatorColor).opacity(0.45),
-                                    lineWidth: 1
-                                )
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Show \(device.name), \(device.connectionSummary)")
-                    .accessibilityAddTraits(selectedDevice?.id == device.id ? .isSelected : [])
-                }
-            }
-        }
-        .scrollIndicators(.hidden)
-    }
-
-    private func previewActions(for device: CaptureDevice) -> some View {
-        HStack(spacing: 9) {
-            Button("Capture \(device.name)", systemImage: "camera.fill") {
-                model.capture(device)
-            }
-            .buttonStyle(.borderedProminent)
-
-            if model.devices.count > 1 {
-                Button("Screenshot All", systemImage: "rectangle.stack.badge.plus") {
-                    model.captureAll()
-                }
-            }
-
-            Button("Refresh Devices", systemImage: "arrow.clockwise") {
-                model.refreshDevices()
-            }
-
-            Spacer()
-
-            Menu("Device", systemImage: "ellipsis.circle") {
-                Button("Hide \(device.name)", systemImage: "eye.slash") {
-                    model.hideDevice(device)
-                    synchronizeSelection()
-                }
-            }
-        }
-        .controlSize(.regular)
     }
 
     private var emptyState: some View {
@@ -246,6 +157,248 @@ private struct LivePreviewPage: View {
         if !model.devices.contains(where: { $0.id == selectedDeviceID }) {
             selectedDeviceID = model.devices.first?.id ?? ""
         }
+    }
+}
+
+private struct LivePreviewWorkspace: View {
+    @ObservedObject var model: AppModel
+    @Binding var selectedDeviceID: String
+
+    var body: some View {
+        GeometryReader { geometry in
+            let columnCount = LivePreviewLayoutPolicy.columnCount(
+                availableWidth: geometry.size.width,
+                deviceCount: model.devices.count
+            )
+
+            if columnCount > 1 {
+                LivePreviewGrid(
+                    model: model,
+                    columnCount: columnCount,
+                    availableHeight: geometry.size.height
+                )
+            } else {
+                CompactLivePreview(model: model, selectedDeviceID: $selectedDeviceID)
+            }
+        }
+    }
+}
+
+private struct CompactLivePreview: View {
+    @ObservedObject var model: AppModel
+    @Binding var selectedDeviceID: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            DeviceSelector(devices: model.devices, selectedDeviceID: $selectedDeviceID)
+
+            if let device = selectedDevice,
+               let preview = model.previewStates[device.id] {
+                FullDevicePreview(
+                    device: device,
+                    preview: preview,
+                    previewsEnabled: model.livePreviewsEnabled
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                CompactPreviewActions(model: model, device: device)
+            }
+        }
+    }
+
+    private var selectedDevice: CaptureDevice? {
+        model.devices.first(where: { $0.id == selectedDeviceID }) ?? model.devices.first
+    }
+}
+
+private struct DeviceSelector: View {
+    let devices: [CaptureDevice]
+    @Binding var selectedDeviceID: String
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                ForEach(devices) { device in
+                    Button {
+                        selectedDeviceID = device.id
+                    } label: {
+                        HStack(spacing: 7) {
+                            Image(systemName: device.systemImageName)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(device.name)
+                                    .font(.system(size: 11.5, weight: .semibold))
+                                Text(device.connectionSummary)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(
+                            selectedDeviceID == device.id
+                                ? TetherShotTheme.accent.opacity(0.18)
+                                : Color(nsColor: .controlBackgroundColor),
+                            in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .stroke(
+                                    selectedDeviceID == device.id
+                                        ? TetherShotTheme.accent.opacity(0.7)
+                                        : Color(nsColor: .separatorColor).opacity(0.45),
+                                    lineWidth: 1
+                                )
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Show \(device.name), \(device.connectionSummary)")
+                    .accessibilityAddTraits(selectedDeviceID == device.id ? .isSelected : [])
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Connected device selector")
+    }
+}
+
+private struct LivePreviewGrid: View {
+    @ObservedObject var model: AppModel
+    let columnCount: Int
+    let availableHeight: CGFloat
+
+    var body: some View {
+        VStack(spacing: LivePreviewLayoutPolicy.spacing) {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: LivePreviewLayoutPolicy.spacing) {
+                    ForEach(model.devices) { device in
+                        if let preview = model.previewStates[device.id] {
+                            LivePreviewTile(
+                                model: model,
+                                device: device,
+                                preview: preview
+                            )
+                            .frame(height: tileHeight)
+                        }
+                    }
+                }
+            }
+            .scrollIndicators(.automatic)
+
+            LivePreviewGridActions(model: model)
+        }
+    }
+
+    private var columns: [GridItem] {
+        Array(
+            repeating: GridItem(
+                .flexible(minimum: LivePreviewLayoutPolicy.minimumColumnWidth),
+                spacing: LivePreviewLayoutPolicy.spacing
+            ),
+            count: columnCount
+        )
+    }
+
+    private var tileHeight: CGFloat {
+        LivePreviewLayoutPolicy.tileHeight(
+            availableHeight: availableHeight,
+            deviceCount: model.devices.count,
+            columnCount: columnCount
+        )
+    }
+}
+
+private struct LivePreviewTile: View {
+    @ObservedObject var model: AppModel
+    let device: CaptureDevice
+    @ObservedObject var preview: DevicePreviewState
+
+    var body: some View {
+        VStack(spacing: 9) {
+            FullDevicePreview(
+                device: device,
+                preview: preview,
+                previewsEnabled: model.livePreviewsEnabled
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            HStack(spacing: 8) {
+                Button("Capture", systemImage: "camera.fill") {
+                    model.capture(device)
+                }
+                .buttonStyle(.borderedProminent)
+
+                Spacer()
+
+                Menu("Device", systemImage: "ellipsis.circle") {
+                    Button("Hide \(device.name)", systemImage: "eye.slash") {
+                        model.hideDevice(device)
+                    }
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+            }
+            .controlSize(.small)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(device.name) live controls")
+    }
+}
+
+private struct CompactPreviewActions: View {
+    @ObservedObject var model: AppModel
+    let device: CaptureDevice
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Button("Capture", systemImage: "camera.fill") {
+                model.capture(device)
+            }
+            .buttonStyle(.borderedProminent)
+
+            if model.devices.count > 1 {
+                Button("All Phones", systemImage: "rectangle.stack.badge.plus") {
+                    model.captureAll()
+                }
+            }
+
+            Button("Refresh", systemImage: "arrow.clockwise") {
+                model.refreshDevices()
+            }
+
+            Spacer()
+
+            Menu("Device", systemImage: "ellipsis.circle") {
+                Button("Hide \(device.name)", systemImage: "eye.slash") {
+                    model.hideDevice(device)
+                }
+            }
+        }
+        .controlSize(.regular)
+    }
+}
+
+private struct LivePreviewGridActions: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Button("Screenshot All", systemImage: "rectangle.stack.badge.plus") {
+                model.captureAll()
+            }
+            .buttonStyle(.borderedProminent)
+
+            Button("Refresh Devices", systemImage: "arrow.clockwise") {
+                model.refreshDevices()
+            }
+
+            Spacer()
+
+            Text("\(model.devices.count) live device\(model.devices.count == 1 ? "" : "s")")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .controlSize(.regular)
     }
 }
 
