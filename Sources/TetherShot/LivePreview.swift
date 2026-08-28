@@ -35,6 +35,18 @@ enum LivePreviewRefreshPolicy {
     }
 }
 
+enum LivePreviewAspectRatio {
+    /// A modern portrait phone silhouette used until the first frame arrives.
+    static let portraitFallback: CGFloat = 9.0 / 19.5
+
+    static func value(width: CGFloat, height: CGFloat) -> CGFloat {
+        guard width.isFinite, height.isFinite, width > 0, height > 0 else {
+            return portraitFallback
+        }
+        return min(max(width / height, 0.25), 4)
+    }
+}
+
 /// Per-device observable state keeps frequent preview updates scoped to the
 /// corresponding card instead of invalidating the entire app window.
 @MainActor
@@ -49,6 +61,11 @@ final class DevicePreviewState: ObservableObject, Identifiable {
 
     init(id: String) {
         self.id = id
+    }
+
+    var displayAspectRatio: CGFloat {
+        guard let image else { return LivePreviewAspectRatio.portraitFallback }
+        return LivePreviewAspectRatio.value(width: image.size.width, height: image.size.height)
     }
 
     func markLoading() {

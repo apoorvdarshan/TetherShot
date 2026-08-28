@@ -411,16 +411,28 @@ private struct FullDevicePreview: View {
     @ObservedObject var preview: DevicePreviewState
     let previewsEnabled: Bool
 
+    private let previewCornerRadius: CGFloat = 28
+
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.black.opacity(0.94))
+            previewStage
+                .aspectRatio(preview.displayAspectRatio, contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Live preview of \(device.name)")
+        .accessibilityValue(previewStatus)
+    }
+
+    private var previewStage: some View {
+        ZStack {
+            Color.black.opacity(0.94)
 
             if let image = preview.image {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFit()
-                    .padding(14)
+                    .padding(7)
             } else {
                 VStack(spacing: 12) {
                     if previewsEnabled, preview.phase == .loading {
@@ -464,13 +476,12 @@ private struct FullDevicePreview: View {
             }
             .padding(12)
         }
+        .compositingGroup()
+        .clipShape(.rect(cornerRadius: previewCornerRadius, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: previewCornerRadius, style: .continuous)
                 .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Live preview of \(device.name)")
-        .accessibilityValue(previewStatus)
     }
 
     private var previewStatus: String {
