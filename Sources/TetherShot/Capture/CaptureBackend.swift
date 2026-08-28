@@ -112,10 +112,10 @@ enum CaptureDeviceMerger {
     private static func rank(_ connection: ConnectionKind) -> Int {
         // Lower ranks win when the same physical device is reachable both ways.
         switch connection {
-        case .wireless: return 0
-        case .androidWireless: return 1
-        case .usb: return 2
-        case .androidUSB: return 3
+        case .usb: return 0
+        case .androidUSB: return 1
+        case .wireless: return 2
+        case .androidWireless: return 3
         }
     }
 
