@@ -13,8 +13,23 @@ final class AndroidCaptureTests: XCTestCase {
 
         let devices = AndroidDeviceParser.parse(output)
 
-        XCTAssertEqual(devices.count, 2)
-        XCTAssertEqual(devices[0], CaptureDevice(id: "R5CT123456", captureID: "R5CT123456", name: "SM S918B", connection: .android))
-        XCTAssertEqual(devices[1], CaptureDevice(id: "emulator-5554", captureID: "emulator-5554", name: "Pixel 8 Pro", connection: .android))
+        XCTAssertEqual(devices.count, 1)
+        XCTAssertEqual(devices[0], CaptureDevice(id: "R5CT123456", captureID: "R5CT123456", name: "SM S918B", connection: .androidUSB))
+    }
+
+    func testIdentifiesWirelessADBAndFiltersEmulatorMetadata() {
+        let output = """
+        List of devices attached
+        192.168.1.10:5555 device product:I2302 model:I2302 device:I2302 transport_id:1
+        local-emulator device product:sdk_gphone64_arm64 model:sdk_gphone64_arm64 device:emu64a transport_id:2
+
+        """
+
+        let devices = AndroidDeviceParser.parse(output)
+
+        XCTAssertEqual(devices.count, 1)
+        XCTAssertEqual(devices[0].connection, .androidWireless)
+        XCTAssertTrue(AndroidDeviceParser.isEmulator(kernelQEMU: "1\n", bootQEMU: ""))
+        XCTAssertFalse(AndroidDeviceParser.isEmulator(kernelQEMU: "\n", bootQEMU: "0\n"))
     }
 }

@@ -14,11 +14,11 @@ final class AppModel: ObservableObject {
     @Published var lastStatus: String = ""
     @Published var wirelessReady = false
     @Published var androidReady = AndroidCapture.adbPath != nil
-    @Published var launchAtLogin = LaunchAtLogin.isEnabled
+    @Published var launchAtLogin: Bool
     @Published var organizeByDevice = UserDefaults.standard.bool(forKey: "organizeByDevice")
     @Published var copyToClipboard = (UserDefaults.standard.object(forKey: "copyToClipboard") as? Bool) ?? true
-    @Published var showInMenuBar = (UserDefaults.standard.object(forKey: "showInMenuBar") as? Bool) ?? true
-    @Published var showInDock = (UserDefaults.standard.object(forKey: "showInDock") as? Bool) ?? true
+    @Published var showInMenuBar: Bool
+    @Published var showInDock: Bool
     @Published var livePreviewsEnabled = (UserDefaults.standard.object(forKey: "livePreviewsEnabled") as? Bool) ?? true
     @Published var autoCheckForUpdates = (UserDefaults.standard.object(forKey: "autoCheckForUpdates") as? Bool) ?? true
     @Published var autoInstallUpdates = (UserDefaults.standard.object(forKey: "autoInstallUpdates") as? Bool) ?? false
@@ -47,6 +47,11 @@ final class AppModel: ObservableObject {
     var dockVisibilityDidChange: ((Bool) -> Void)?
 
     init() {
+        let backgroundPreferences = BackgroundPreferenceStore.bootstrap()
+        launchAtLogin = backgroundPreferences.launchAtLogin
+        showInMenuBar = backgroundPreferences.showInMenuBar
+        showInDock = backgroundPreferences.showInDock
+
         Notifier.requestAuthorization()
         registerHotKey()
         refreshDevices()
@@ -217,7 +222,7 @@ final class AppModel: ObservableObject {
                         png = try await usb.capture(deviceID: device.captureID)
                     case .wireless:
                         png = try await wireless.capture(deviceID: device.captureID)
-                    case .android:
+                    case .androidUSB, .androidWireless:
                         png = try await android.capture(deviceID: device.captureID)
                     }
                     if !Task.isCancelled { state.update(png: png) }
@@ -312,7 +317,7 @@ final class AppModel: ObservableObject {
                     png = try await usb.capture(deviceID: device.captureID)
                 case .wireless:
                     png = try await wireless.capture(deviceID: device.captureID)
-                case .android:
+                case .androidUSB, .androidWireless:
                     png = try await android.capture(deviceID: device.captureID)
                 }
             }
@@ -367,6 +372,7 @@ final class AppModel: ObservableObject {
 
     func setLaunchAtLogin(_ enabled: Bool) {
         launchAtLogin = LaunchAtLogin.set(enabled)
+        BackgroundPreferenceStore.saveLaunchAtLogin(launchAtLogin)
     }
 
     func setOrganizeByDevice(_ enabled: Bool) {
@@ -397,7 +403,7 @@ final class AppModel: ObservableObject {
     func setShowInMenuBar(_ enabled: Bool) {
         guard showInMenuBar != enabled else { return }
         showInMenuBar = enabled
-        UserDefaults.standard.set(enabled, forKey: "showInMenuBar")
+        UserDefaults.standard.set(enabled, forKey: BackgroundPreferenceStore.showInMenuBarKey)
         lastStatus = enabled
             ? "Menu-bar icon enabled."
             : "Menu-bar icon hidden. Reopen TetherShot from Applications or Spotlight."
@@ -406,7 +412,7 @@ final class AppModel: ObservableObject {
     func setShowInDock(_ enabled: Bool) {
         guard showInDock != enabled else { return }
         showInDock = enabled
-        UserDefaults.standard.set(enabled, forKey: "showInDock")
+        UserDefaults.standard.set(enabled, forKey: BackgroundPreferenceStore.showInDockKey)
         dockVisibilityDidChange?(enabled)
         lastStatus = enabled
             ? "Dock icon enabled."

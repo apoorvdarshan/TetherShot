@@ -34,4 +34,27 @@ final class CaptureDeviceMergerTests: XCTestCase {
             "android:a1b2c3"
         )
     }
+
+    func testSamePhysicalAndroidOverUSBAndWiFiAppearsOnceAndPrefersUSB() {
+        let stableID = "android:2b0ebf54c47846e6"
+        let merged = CaptureDeviceMerger.merge([
+            CaptureDevice(
+                id: stableID,
+                captureID: "10BE6L202X000AZ",
+                name: "I2302",
+                connection: .androidUSB
+            ),
+            CaptureDevice(
+                id: stableID,
+                captureID: "192.168.1.10:5555",
+                name: "I2302",
+                connection: .androidWireless
+            ),
+        ])
+
+        XCTAssertEqual(merged.count, 1)
+        XCTAssertEqual(merged[0].captureID, "10BE6L202X000AZ")
+        XCTAssertEqual(merged[0].connection, .androidUSB)
+        XCTAssertEqual(merged[0].availableConnections, [.androidUSB, .androidWireless])
+    }
 }

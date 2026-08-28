@@ -13,22 +13,24 @@ enum LivePreviewRefreshPolicy {
     static func intervalNanoseconds(for connection: ConnectionKind) -> UInt64 {
         switch connection {
         case .usb:
-            return 2_000_000_000
+            return 100_000_000
         case .wireless:
-            return 5_000_000_000
-        case .android:
-            return 2_500_000_000
+            return 400_000_000
+        case .androidUSB:
+            return 250_000_000
+        case .androidWireless:
+            return 400_000_000
         }
     }
 
     static func maximumFrameAge(for connection: ConnectionKind) -> TimeInterval {
         switch connection {
         case .usb:
-            return 3
+            return 2
         case .wireless:
-            return 7
-        case .android:
-            return 4
+            return 3
+        case .androidUSB, .androidWireless:
+            return 2
         }
     }
 }

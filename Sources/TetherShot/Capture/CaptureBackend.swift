@@ -4,7 +4,8 @@ import Foundation
 enum ConnectionKind: String, Equatable {
     case usb = "USB"
     case wireless = "Wi-Fi"
-    case android = "Android (ADB)"
+    case androidUSB = "Android USB"
+    case androidWireless = "Android Wi-Fi"
 }
 
 /// A capturable phone surfaced by a backend.
@@ -35,12 +36,16 @@ extension CaptureDevice {
         switch connection {
         case .usb: return "cable.connector"
         case .wireless: return "wifi"
-        case .android: return "apps.iphone"
+        case .androidUSB: return "cable.connector"
+        case .androidWireless: return "wifi"
         }
     }
 
     var platformName: String {
-        connection == .android ? "Android" : "iPhone"
+        switch connection {
+        case .androidUSB, .androidWireless: return "Android"
+        case .usb, .wireless: return "iPhone"
+        }
     }
 
     var connectionSummary: String {
@@ -107,8 +112,9 @@ enum CaptureDeviceMerger {
     private static func rank(_ connection: ConnectionKind) -> Int {
         switch connection {
         case .usb: return 0
-        case .android: return 1
+        case .androidUSB: return 1
         case .wireless: return 2
+        case .androidWireless: return 3
         }
     }
 

@@ -21,17 +21,31 @@ final class AndroidCapture: CaptureBackend {
         guard result.status == 0 else { return [] }
         var devices: [CaptureDevice] = []
         for parsed in AndroidDeviceParser.parse(result.stdout) {
+            async let kernelQEMUResult = Proc.run(
+                adb,
+                ["-s", parsed.captureID, "shell", "getprop", "ro.kernel.qemu"],
+                timeout: 5
+            )
+            async let bootQEMUResult = Proc.run(
+                adb,
+                ["-s", parsed.captureID, "shell", "getprop", "ro.boot.qemu"],
+                timeout: 5
+            )
             let identityResult = await Proc.run(
                 adb,
                 ["-s", parsed.captureID, "shell", "settings", "get", "secure", "android_id"],
                 timeout: 5
             )
+            guard !AndroidDeviceParser.isEmulator(
+                kernelQEMU: (await kernelQEMUResult).stdout,
+                bootQEMU: (await bootQEMUResult).stdout
+            ) else { continue }
             let androidID = identityResult.status == 0 ? identityResult.stdout : nil
             devices.append(CaptureDevice(
                 id: DeviceIdentity.android(androidID: androidID, adbSerial: parsed.captureID),
                 captureID: parsed.captureID,
                 name: parsed.name,
-                connection: .android
+                connection: parsed.connection
             ))
         }
         return devices
@@ -89,12 +103,41 @@ enum AndroidDeviceParser {
                 let fields = line.split(whereSeparator: \.isWhitespace).map(String.init)
                 guard fields.count >= 2, fields[1] == "device" else { return nil }
                 let serial = fields[0]
+                guard !isEmulator(serial: serial, fields: fields) else { return nil }
                 let model = fields
                     .first(where: { $0.hasPrefix("model:") })?
                     .dropFirst("model:".count)
                     .replacingOccurrences(of: "_", with: " ")
                 let name = model?.isEmpty == false ? model! : "Android …\(serial.suffix(5))"
-                return CaptureDevice(id: serial, captureID: serial, name: name, connection: .android)
+                let connection: ConnectionKind = isWireless(serial: serial)
+                    ? .androidWireless
+                    : .androidUSB
+                return CaptureDevice(id: serial, captureID: serial, name: name, connection: connection)
             }
+    }
+
+    static func isEmulator(kernelQEMU: String, bootQEMU: String) -> Bool {
+        [kernelQEMU, bootQEMU].contains {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines) == "1"
+        }
+    }
+
+    private static func isWireless(serial: String) -> Bool {
+        serial.contains(":") || serial.localizedCaseInsensitiveContains("._adb-tls-connect._tcp")
+    }
+
+    private static func isEmulator(serial: String, fields: [String]) -> Bool {
+        let serial = serial.lowercased()
+        if serial.hasPrefix("emulator-") { return true }
+
+        let normalizedFields = fields.map(
+            { $0.lowercased().replacingOccurrences(of: "-", with: "_") }
+        )
+        return normalizedFields.contains { field in
+            field.hasPrefix("product:sdk_gphone")
+                || field.hasPrefix("model:sdk_gphone")
+                || field.hasPrefix("device:emu")
+                || field == "device:generic"
+        }
     }
 }

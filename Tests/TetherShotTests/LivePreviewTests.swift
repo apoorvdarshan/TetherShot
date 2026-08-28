@@ -16,4 +16,18 @@ final class LivePreviewTests: XCTestCase {
         XCTAssertGreaterThan(LivePreviewRefreshPolicy.maximumFrameAge(for: .usb), usbInterval)
         XCTAssertGreaterThan(LivePreviewRefreshPolicy.maximumFrameAge(for: .wireless), wirelessInterval)
     }
+
+    func testLivePreviewUsesSubsecondRefreshThrottles() {
+        for connection in [
+            ConnectionKind.usb,
+            .wireless,
+            .androidUSB,
+            .androidWireless,
+        ] {
+            XCTAssertLessThan(
+                LivePreviewRefreshPolicy.intervalNanoseconds(for: connection),
+                1_000_000_000
+            )
+        }
+    }
 }
