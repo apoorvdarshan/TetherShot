@@ -60,6 +60,7 @@ final class DevicePreviewState: ObservableObject, Identifiable {
 
     private(set) var latestPNG: Data?
     private(set) var updatedAt: Date?
+    private var updateGeneration: UInt64 = 0
 
     init(id: String) {
         self.id = id
@@ -76,17 +77,26 @@ final class DevicePreviewState: ObservableObject, Identifiable {
         phase = .loading
     }
 
-    func update(png: Data) async {
+    func update(png: Data, reusableForCapture: Bool = true) async {
+        updateGeneration &+= 1
+        let generation = updateGeneration
         let thumbnail = await Task.detached(priority: .userInitiated) {
             LivePreviewImage.thumbnail(from: png)
         }.value
-        guard phase != .paused else { return }
+        guard phase != .paused, generation == updateGeneration else { return }
         guard let thumbnail else {
             fail("Preview could not be decoded")
             return
         }
-        latestPNG = png
-        updatedAt = Date()
+        if reusableForCapture {
+            latestPNG = png
+            updatedAt = Date()
+        } else {
+            // Wi-Fi live previews are intentionally resized JPEGs. A Capture
+            // action must still request the original full-resolution PNG.
+            latestPNG = nil
+            updatedAt = nil
+        }
         image = thumbnail
         if phase != .live { phase = .live }
     }
@@ -99,6 +109,7 @@ final class DevicePreviewState: ObservableObject, Identifiable {
 
     func pause() {
         guard phase != .paused else { return }
+        updateGeneration &+= 1
         videoRelay.flush()
         phase = .paused
     }
@@ -118,8 +129,8 @@ final class DevicePreviewState: ObservableObject, Identifiable {
 }
 
 private enum LivePreviewImage {
-    /// Decode a small display image while retaining the original PNG bytes for
-    /// saving. This avoids keeping several full-resolution decoded frames alive.
+    /// Decode a small display image. Capture-quality PNG data is retained
+    /// separately only for transports whose preview frames are full resolution.
     static func thumbnail(from data: Data, maximumPixelSize: Int = 1_200) -> NSImage? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         let options: [CFString: Any] = [

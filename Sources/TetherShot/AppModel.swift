@@ -288,10 +288,10 @@ final class AppModel: ObservableObject {
     private func runWirelessLivePreview(device: CaptureDevice, state: DevicePreviewState) async {
         state.markLoading()
         do {
-            try await wireless.streamPreview(deviceID: device.captureID) { [weak state] png in
+            try await wireless.streamPreview(deviceID: device.captureID) { [weak state] imageData in
                 Task { @MainActor in
                     guard !Task.isCancelled else { return }
-                    await state?.update(png: png)
+                    await state?.update(png: imageData, reusableForCapture: false)
                 }
             }
         } catch {

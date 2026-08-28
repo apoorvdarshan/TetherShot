@@ -333,9 +333,14 @@ final class AndroidH264PreviewStream: @unchecked Sendable {
         process.standardOutput = outputPipe
         process.standardError = errorPipe
 
-        lock.withLock {
+        let shouldLaunch = lock.withLock { () -> Bool in
+            guard !cancelled else { return false }
             self.process = process
-            if cancelled { process.terminate() }
+            return true
+        }
+        guard shouldLaunch else {
+            relay.flush()
+            return
         }
         defer {
             lock.withLock { self.process = nil }
@@ -347,6 +352,7 @@ final class AndroidH264PreviewStream: @unchecked Sendable {
         } catch {
             throw CaptureError.other("Could not start Android live preview: \(error.localizedDescription)")
         }
+        if isCancelled, process.isRunning { process.terminate() }
         Log.shared.log("android: H.264 live stream started \(deviceID)")
 
         var errorData = Data()

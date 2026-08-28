@@ -135,7 +135,7 @@ final class WirelessCapture: CaptureBackend {
         guard let helper = Self.previewHelperPath else {
             throw CaptureError.other("Wireless live-preview helper is missing.")
         }
-        let stream = LengthPrefixedPNGPreviewStream(
+        let stream = LengthPrefixedImagePreviewStream(
             executablePath: python,
             arguments: [helper, deviceID]
         )
@@ -159,7 +159,7 @@ final class WirelessCapture: CaptureBackend {
     }
 }
 
-private final class LengthPrefixedPNGPreviewStream: @unchecked Sendable {
+private final class LengthPrefixedImagePreviewStream: @unchecked Sendable {
     private let executablePath: String
     private let arguments: [String]
     private let lock = NSLock()
@@ -200,10 +200,12 @@ private final class LengthPrefixedPNGPreviewStream: @unchecked Sendable {
         let errorPipe = Pipe()
         process.standardOutput = outputPipe
         process.standardError = errorPipe
-        lock.withLock {
+        let shouldLaunch = lock.withLock { () -> Bool in
+            guard !cancelled else { return false }
             self.process = process
-            if cancelled { process.terminate() }
+            return true
         }
+        guard shouldLaunch else { return }
         defer { lock.withLock { self.process = nil } }
 
         do {
@@ -211,6 +213,7 @@ private final class LengthPrefixedPNGPreviewStream: @unchecked Sendable {
         } catch {
             throw CaptureError.other("Could not start Wi-Fi live preview: \(error.localizedDescription)")
         }
+        if isCancelled, process.isRunning { process.terminate() }
         Log.shared.log("wireless: persistent DVT preview started")
 
         var errorData = Data()
@@ -226,8 +229,8 @@ private final class LengthPrefixedPNGPreviewStream: @unchecked Sendable {
             guard let header = try handle.readExactly(4) else { break }
             let length = header.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
             guard length > 0, length <= 32 * 1_024 * 1_024,
-                  let png = try handle.readExactly(Int(length)) else { break }
-            onFrame(png)
+                  let imageData = try handle.readExactly(Int(length)) else { break }
+            onFrame(imageData)
         }
 
         if process.isRunning { process.terminate() }

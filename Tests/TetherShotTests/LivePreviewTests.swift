@@ -2,6 +2,10 @@ import XCTest
 @testable import TetherShot
 
 final class LivePreviewTests: XCTestCase {
+    private let onePixelPNG = Data(base64Encoded:
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    )!
+
     func testUSBRefreshesMoreFrequentlyThanWireless() {
         XCTAssertLessThan(
             LivePreviewRefreshPolicy.intervalNanoseconds(for: .usb),
@@ -50,5 +54,24 @@ final class LivePreviewTests: XCTestCase {
             LivePreviewAspectRatio.portraitFallback,
             accuracy: 0.000_001
         )
+    }
+
+    @MainActor
+    func testCompressedPreviewIsNotReusedAsFullResolutionCapture() async {
+        let state = DevicePreviewState(id: "phone")
+
+        await state.update(png: onePixelPNG, reusableForCapture: false)
+
+        XCTAssertNotNil(state.image)
+        XCTAssertNil(state.recentPNG(maximumAge: 10))
+    }
+
+    @MainActor
+    func testFullResolutionPreviewRemainsReusableForCapture() async {
+        let state = DevicePreviewState(id: "phone")
+
+        await state.update(png: onePixelPNG)
+
+        XCTAssertEqual(state.recentPNG(maximumAge: 10), onePixelPNG)
     }
 }
