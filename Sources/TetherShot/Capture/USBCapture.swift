@@ -127,18 +127,14 @@ private final class USBPreviewStream: NSObject, AVCaptureVideoDataOutputSampleBu
     private func start() {
         do {
             let input = try AVCaptureDeviceInput(device: device)
-            session.beginConfiguration()
             session.sessionPreset = .high
-            guard session.canAddInput(input), session.canAddOutput(output) else {
-                session.commitConfiguration()
-                finish(.failure(CaptureError.other("Cannot start USB live preview.")))
-                return
-            }
-            session.addInput(input)
             output.alwaysDiscardsLateVideoFrames = true
             output.setSampleBufferDelegate(self, queue: delegateQueue)
-            session.addOutput(output)
-            session.commitConfiguration()
+            try USBSessionConfigurator.configureVideoOnly(
+                session: session,
+                input: input,
+                output: output
+            )
             guard !isFinished else { return }
             session.startRunning()
             Log.shared.log("usb: persistent preview started '\(device.localizedName)'")
@@ -220,23 +216,14 @@ private final class FrameGrabber: NSObject, AVCaptureVideoDataOutputSampleBuffer
                 do {
                     let input = try AVCaptureDeviceInput(device: device)
                     Log.shared.log("grab: input created")
-                    self.session.beginConfiguration()
-                    guard self.session.canAddInput(input) else {
-                        self.session.commitConfiguration()
-                        Log.shared.log("grab: canAddInput == false")
-                        self.finish(.failure(CaptureError.other("Cannot read this device.")))
-                        return
-                    }
-                    self.session.addInput(input)
                     self.output.alwaysDiscardsLateVideoFrames = true
                     self.output.setSampleBufferDelegate(self, queue: self.delegateQueue)
-                    if self.session.canAddOutput(self.output) {
-                        self.session.addOutput(self.output)
-                        Log.shared.log("grab: output added")
-                    } else {
-                        Log.shared.log("grab: canAddOutput == false")
-                    }
-                    self.session.commitConfiguration()
+                    try USBSessionConfigurator.configureVideoOnly(
+                        session: self.session,
+                        input: input,
+                        output: self.output
+                    )
+                    Log.shared.log("grab: video-only output added")
                     Log.shared.log("grab: committed, calling startRunning")
                     self.session.startRunning()
                     Log.shared.log("grab: startRunning returned, isRunning=\(self.session.isRunning)")
@@ -284,6 +271,36 @@ private final class FrameGrabber: NSObject, AVCaptureVideoDataOutputSampleBuffer
         }
     }
 
+}
+
+private enum USBSessionConfigurator {
+    /// A muxed iPhone input advertises video, sound, closed-caption, and
+    /// metadata ports. Automatic session connections can activate the sound
+    /// endpoint and make iOS ask whether the Mac is a pair of headphones.
+    /// Connect only the video port explicitly.
+    static func configureVideoOnly(
+        session: AVCaptureSession,
+        input: AVCaptureDeviceInput,
+        output: AVCaptureVideoDataOutput
+    ) throws {
+        guard let videoPort = input.ports.first(where: { $0.mediaType == .video }) else {
+            throw CaptureError.other("The iPhone screen has no video port.")
+        }
+
+        session.beginConfiguration()
+        defer { session.commitConfiguration() }
+        guard session.canAddInput(input), session.canAddOutput(output) else {
+            throw CaptureError.other("Cannot read this iPhone screen.")
+        }
+        session.addInputWithNoConnections(input)
+        session.addOutputWithNoConnections(output)
+
+        let videoConnection = AVCaptureConnection(inputPorts: [videoPort], output: output)
+        guard session.canAddConnection(videoConnection) else {
+            throw CaptureError.other("Cannot connect the iPhone video stream.")
+        }
+        session.addConnection(videoConnection)
+    }
 }
 
 private enum USBFrameEncoder {
