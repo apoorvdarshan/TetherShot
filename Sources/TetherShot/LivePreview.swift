@@ -73,7 +73,10 @@ final class DevicePreviewState: ObservableObject, Identifiable {
     }
 
     func markLoading() {
-        guard phase != .loading else { return }
+        // Keep an already-rendering preview live while its next frame is being
+        // fetched. USB uses repeated one-shot captures, so demoting the phase
+        // here would make the LIVE badge flicker off for most of every cycle.
+        guard phase != .loading, phase != .live else { return }
         phase = .loading
     }
 

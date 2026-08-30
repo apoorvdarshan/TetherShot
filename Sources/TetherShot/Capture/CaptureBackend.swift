@@ -49,6 +49,10 @@ extension CaptureDevice {
     }
 
     var connectionSummary: String {
+        connection.rawValue
+    }
+
+    var availableConnectionSummary: String {
         availableConnections.map(\.rawValue).joined(separator: " + ")
     }
 }
@@ -78,6 +82,7 @@ enum DeviceIdentity {
 
 enum CaptureDeviceMerger {
     static func merge(_ devices: [CaptureDevice]) -> [CaptureDevice] {
+        let devices = reconcileIOSRouteIdentities(in: devices)
         var order: [String] = []
         var merged: [String: CaptureDevice] = [:]
 
@@ -109,6 +114,45 @@ enum CaptureDeviceMerger {
         return order.compactMap { merged[$0] }
     }
 
+    /// AVFoundation exposes an iPhone screen with a CoreMediaIO UUID that is
+    /// unrelated to the device's Apple UDID. When exactly one native USB route
+    /// and one wireless route have the same friendly name, use the wireless
+    /// route's stable UDID as the shared identity while keeping the USB
+    /// capture handle. Ambiguous names are intentionally left separate.
+    private static func reconcileIOSRouteIdentities(
+        in devices: [CaptureDevice]
+    ) -> [CaptureDevice] {
+        let usbByName = Dictionary(grouping: devices.filter { $0.connection == .usb }) {
+            normalizedName($0.name)
+        }
+        let wirelessByName = Dictionary(grouping: devices.filter { $0.connection == .wireless }) {
+            normalizedName($0.name)
+        }
+        var aliases: [String: String] = [:]
+
+        for (name, usbDevices) in usbByName {
+            guard !name.isEmpty,
+                  usbDevices.count == 1,
+                  let wirelessDevices = wirelessByName[name],
+                  wirelessDevices.count == 1,
+                  !isFallbackName(usbDevices[0].name),
+                  !isFallbackName(wirelessDevices[0].name) else { continue }
+            aliases[usbDevices[0].id] = wirelessDevices[0].id
+        }
+
+        guard !aliases.isEmpty else { return devices }
+        return devices.map { device in
+            guard let canonicalID = aliases[device.id] else { return device }
+            return CaptureDevice(
+                id: canonicalID,
+                captureID: device.captureID,
+                name: device.name,
+                connection: device.connection,
+                availableConnections: device.availableConnections
+            )
+        }
+    }
+
     private static func rank(_ connection: ConnectionKind) -> Int {
         // Lower ranks win when the same physical device is reachable both ways.
         switch connection {
@@ -121,6 +165,13 @@ enum CaptureDeviceMerger {
 
     private static func isFallbackName(_ name: String) -> Bool {
         name.hasPrefix("iPhone …") || name.hasPrefix("Android …")
+    }
+
+    private static func normalizedName(_ name: String) -> String {
+        name.precomposedStringWithCanonicalMapping
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
     }
 }
 

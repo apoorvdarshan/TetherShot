@@ -74,4 +74,14 @@ final class LivePreviewTests: XCTestCase {
 
         XCTAssertEqual(state.recentPNG(maximumAge: 10), onePixelPNG)
     }
+
+    @MainActor
+    func testRefreshingFrameDoesNotDemoteLivePreviewToLoading() async {
+        let state = DevicePreviewState(id: "phone")
+        await state.update(png: onePixelPNG)
+
+        state.markLoading()
+
+        XCTAssertEqual(state.phase, .live)
+    }
 }

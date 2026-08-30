@@ -68,11 +68,14 @@ final class AppModel: ObservableObject {
         let usbDevices = usb.discoverDevices()
         applyDiscoveredDevices(usbDevices)            // show USB immediately
         Task {
+            async let refreshedUSBDevices = discoverUSBDevicesWithStartupRetry(initial: usbDevices)
             async let wirelessDevices = wireless.discoverDevicesAsync()
             async let androidDevices = android.discoverDevicesAsync()
             wirelessReady = await wireless.isTunneldRunning()
             androidReady = AndroidCapture.adbPath != nil
-            applyDiscoveredDevices(usbDevices + (await wirelessDevices) + (await androidDevices))
+            applyDiscoveredDevices(
+                (await refreshedUSBDevices) + (await wirelessDevices) + (await androidDevices)
+            )
             if devices.isEmpty {
                 if hiddenConnectedDeviceCount > 0 {
                     lastStatus = "All connected phones are hidden. Restore one under Hidden Devices."
@@ -85,6 +88,22 @@ final class AppModel: ObservableObject {
                 lastStatus = ""
             }
         }
+    }
+
+    /// CoreMediaIO can register a connected iPhone screen just after app
+    /// launch. Retry only when the immediate discovery was empty so the USB
+    /// route can replace Wi-Fi without requiring a manual refresh.
+    private func discoverUSBDevicesWithStartupRetry(
+        initial: [CaptureDevice]
+    ) async -> [CaptureDevice] {
+        guard initial.isEmpty else { return initial }
+        for delay in [250_000_000, 750_000_000, 1_500_000_000] as [UInt64] {
+            try? await Task.sleep(nanoseconds: delay)
+            if Task.isCancelled { return [] }
+            let discovered = usb.discoverDevices()
+            if !discovered.isEmpty { return discovered }
+        }
+        return []
     }
 
     private func merged(with usbDevices: [CaptureDevice]) async -> [CaptureDevice] {
