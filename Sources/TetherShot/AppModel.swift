@@ -254,32 +254,31 @@ final class AppModel: ObservableObject {
                 continue
             }
 
-            if !isCapturing {
-                state.markLoading()
-                do {
-                    let png: Data
-                    switch device.connection {
-                    case .usb:
-                        guard await cameraAccessForPreview() else {
-                            state.fail("Camera permission needed")
-                            try? await Task.sleep(nanoseconds: 8_000_000_000)
-                            continue
-                        }
-                        png = try await usb.capture(deviceID: device.captureID)
-                    case .wireless:
-                        preconditionFailure("Wi-Fi previews use the persistent path")
-                    case .androidUSB, .androidWireless:
-                        preconditionFailure("Android previews use the streaming path")
-                    }
-                    if !Task.isCancelled { await state.update(png: png) }
-                } catch {
-                    if !Task.isCancelled { state.fail(Self.previewErrorMessage(error)) }
+            if device.connection == .usb {
+                await runUSBLivePreview(device: device, state: state)
+                if !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 750_000_000)
+                }
+                continue
+            }
+        }
+    }
+
+    private func runUSBLivePreview(device: CaptureDevice, state: DevicePreviewState) async {
+        guard await cameraAccessForPreview() else {
+            state.fail("Camera permission needed")
+            return
+        }
+        state.markLoading()
+        do {
+            try await usb.streamPreview(deviceID: device.captureID) { [weak state] png in
+                Task { @MainActor in
+                    guard !Task.isCancelled else { return }
+                    await state?.update(png: png)
                 }
             }
-
-            try? await Task.sleep(
-                nanoseconds: LivePreviewRefreshPolicy.intervalNanoseconds(for: device.connection)
-            )
+        } catch {
+            if !Task.isCancelled { state.fail(Self.previewErrorMessage(error)) }
         }
     }
 

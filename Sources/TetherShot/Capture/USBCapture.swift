@@ -68,6 +68,123 @@ final class USBCapture: NSObject, CaptureBackend {
         Log.shared.log("capture: device found '\(device.localizedName)' connected=\(device.isConnected)")
         return try await FrameGrabber().grab(device: device)
     }
+
+    /// Keeps one native USB session open for the lifetime of the visible live
+    /// preview. Repeatedly opening a muxed iPhone input also reconnects its
+    /// audio channel, which can trigger accessory/headphones prompts.
+    func streamPreview(
+        deviceID: String,
+        onFrame: @escaping @Sendable (Data) -> Void
+    ) async throws {
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        guard status == .authorized else { throw CaptureError.permissionDenied }
+        guard let device = discoverySession().devices.first(where: { $0.uniqueID == deviceID })
+            ?? AVCaptureDevice(uniqueID: deviceID) else {
+            throw CaptureError.noDevice
+        }
+        try await USBPreviewStream(device: device, onFrame: onFrame).run()
+    }
+}
+
+/// A persistent video-only session for native USB live preview.
+private final class USBPreviewStream: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
+    private let device: AVCaptureDevice
+    private let onFrame: @Sendable (Data) -> Void
+    private let session = AVCaptureSession()
+    private let output = AVCaptureVideoDataOutput()
+    private let context = CIContext()
+    private let sessionQueue = DispatchQueue(label: "com.apoorvdarshan.tethershot.usb-preview.session")
+    private let delegateQueue = DispatchQueue(label: "com.apoorvdarshan.tethershot.usb-preview.frames")
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Void, Error>?
+    private var finished = false
+    private var lastFrameTime: TimeInterval = 0
+
+    init(device: AVCaptureDevice, onFrame: @escaping @Sendable (Data) -> Void) {
+        self.device = device
+        self.onFrame = onFrame
+    }
+
+    func run() async throws {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                lock.lock()
+                if finished {
+                    lock.unlock()
+                    continuation.resume()
+                    return
+                }
+                self.continuation = continuation
+                lock.unlock()
+
+                sessionQueue.async { [weak self] in self?.start() }
+            }
+        } onCancel: { [weak self] in
+            self?.finish(.success(()))
+        }
+    }
+
+    private func start() {
+        do {
+            let input = try AVCaptureDeviceInput(device: device)
+            session.beginConfiguration()
+            session.sessionPreset = .high
+            guard session.canAddInput(input), session.canAddOutput(output) else {
+                session.commitConfiguration()
+                finish(.failure(CaptureError.other("Cannot start USB live preview.")))
+                return
+            }
+            session.addInput(input)
+            output.alwaysDiscardsLateVideoFrames = true
+            output.setSampleBufferDelegate(self, queue: delegateQueue)
+            session.addOutput(output)
+            session.commitConfiguration()
+            guard !isFinished else { return }
+            session.startRunning()
+            Log.shared.log("usb: persistent preview started '\(device.localizedName)'")
+        } catch {
+            finish(.failure(error))
+        }
+    }
+
+    func captureOutput(
+        _ output: AVCaptureOutput,
+        didOutput sampleBuffer: CMSampleBuffer,
+        from connection: AVCaptureConnection
+    ) {
+        guard !isFinished else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now - lastFrameTime >= 0.10 else { return }
+        lastFrameTime = now
+        guard let png = USBFrameEncoder.png(from: sampleBuffer, context: context) else { return }
+        onFrame(png)
+    }
+
+    private var isFinished: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return finished
+    }
+
+    private func finish(_ result: Result<Void, Error>) {
+        lock.lock()
+        if finished {
+            lock.unlock()
+            return
+        }
+        finished = true
+        let continuation = self.continuation
+        self.continuation = nil
+        lock.unlock()
+
+        output.setSampleBufferDelegate(nil, queue: nil)
+        let session = self.session
+        sessionQueue.async {
+            if session.isRunning { session.stopRunning() }
+            Log.shared.log("usb: persistent preview stopped")
+        }
+        continuation?.resume(with: result)
+    }
 }
 
 /// Spins up a one-shot capture session, grabs the first delivered frame, and
@@ -83,6 +200,7 @@ private final class FrameGrabber: NSObject, AVCaptureVideoDataOutputSampleBuffer
     private let output = AVCaptureVideoDataOutput()
     private let sessionQueue = DispatchQueue(label: "com.apoorvdarshan.tethershot.session")
     private let delegateQueue = DispatchQueue(label: "com.apoorvdarshan.tethershot.frames")
+    private let context = CIContext()
     private let lock = NSLock()
     private var continuation: CheckedContinuation<Data, Error>?
     private var finished = false
@@ -133,7 +251,7 @@ private final class FrameGrabber: NSObject, AVCaptureVideoDataOutputSampleBuffer
     func captureOutput(_ output: AVCaptureOutput,
                        didOutput sampleBuffer: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
-        guard let png = Self.png(from: sampleBuffer) else {
+        guard let png = USBFrameEncoder.png(from: sampleBuffer, context: context) else {
             Log.shared.log("captureOutput: frame had no image buffer (awaiting next)")
             return
         }
@@ -166,10 +284,12 @@ private final class FrameGrabber: NSObject, AVCaptureVideoDataOutputSampleBuffer
         }
     }
 
-    private static func png(from sampleBuffer: CMSampleBuffer) -> Data? {
+}
+
+private enum USBFrameEncoder {
+    static func png(from sampleBuffer: CMSampleBuffer, context: CIContext) -> Data? {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return nil }
         let ciImage = CIImage(cvImageBuffer: pixelBuffer)
-        let context = CIContext()
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
         return NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:])
     }
