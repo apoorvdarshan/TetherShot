@@ -9,10 +9,9 @@ struct TetherShotApp: App {
     var body: some Scene {
         Window("TetherShot", id: "main") {
             MainWindow(model: model, appDelegate: appDelegate)
-                .frame(minWidth: 760, idealWidth: 1040, minHeight: 640, idealHeight: 820)
+                .frame(width: 620, height: 680)
         }
-        .defaultSize(width: 1040, height: 820)
-        .windowResizability(.contentMinSize)
+        .windowResizability(.contentSize)
         .commands { CommandGroup(replacing: .newItem) {} }
 
         MenuBarExtra(
@@ -49,31 +48,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return true
     }
 
-    func applicationDidHide(_ notification: Notification) {
-        synchronizePreviewVisibility()
-    }
-
-    func applicationDidUnhide(_ notification: Notification) {
-        synchronizePreviewVisibility()
-    }
-
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         sender.orderOut(nil)
-        synchronizePreviewVisibility(for: sender)
         applyDockPreference()
         return false
-    }
-
-    func windowDidMiniaturize(_ notification: Notification) {
-        synchronizePreviewVisibility(for: notification.object as? NSWindow)
-    }
-
-    func windowDidDeminiaturize(_ notification: Notification) {
-        synchronizePreviewVisibility(for: notification.object as? NSWindow)
-    }
-
-    func windowDidChangeOcclusionState(_ notification: Notification) {
-        synchronizePreviewVisibility(for: notification.object as? NSWindow)
     }
 
     func attach(to window: NSWindow?, model: AppModel) {
@@ -83,32 +61,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         appModel = model
         model.dockVisibilityDidChange = { [weak self] _ in self?.applyDockPreference() }
         window.delegate = self
-        if isNewWindow { showMainWindow() }
+        if isNewWindow { presentMainWindow(refreshDevices: false) }
     }
 
     func showMainWindow() {
+        presentMainWindow(refreshDevices: true)
+    }
+
+    private func presentMainWindow(refreshDevices: Bool) {
         applyDockPreference()
         NSApp.activate(ignoringOtherApps: true)
         mainWindow?.makeKeyAndOrderFront(nil)
-        synchronizePreviewVisibility()
+        if refreshDevices { appModel?.refreshDevices() }
     }
 
     private func applyDockPreference() {
         NSApp.setActivationPolicy((appModel?.showInDock ?? true) ? .regular : .accessory)
-    }
-
-    private func synchronizePreviewVisibility(for window: NSWindow? = nil) {
-        guard let window = window ?? mainWindow else {
-            appModel?.setPreviewWindowVisible(false)
-            return
-        }
-        let visible = PreviewActivityPolicy.windowAllowsPreview(
-            isVisible: window.isVisible,
-            isMiniaturized: window.isMiniaturized,
-            occlusionIsVisible: window.occlusionState.contains(.visible),
-            appIsHidden: NSApp.isHidden
-        )
-        appModel?.setPreviewWindowVisible(visible)
     }
 }
 

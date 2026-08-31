@@ -7,9 +7,7 @@ import AVFoundation
 /// always renders a consistent view.
 @MainActor
 final class AppModel: ObservableObject {
-    @Published var devices: [CaptureDevice] = [] {
-        didSet { reconcileLivePreviews() }
-    }
+    @Published var devices: [CaptureDevice] = []
     @Published var destinationFolder: URL = FolderStore.load()
     @Published var lastStatus: String = ""
     @Published var wirelessReady = false
@@ -19,12 +17,10 @@ final class AppModel: ObservableObject {
     @Published var copyToClipboard = (UserDefaults.standard.object(forKey: "copyToClipboard") as? Bool) ?? true
     @Published var showInMenuBar: Bool
     @Published var showInDock: Bool
-    @Published var livePreviewsEnabled = (UserDefaults.standard.object(forKey: "livePreviewsEnabled") as? Bool) ?? true
     @Published var autoCheckForUpdates = (UserDefaults.standard.object(forKey: "autoCheckForUpdates") as? Bool) ?? true
     @Published var autoInstallUpdates = (UserDefaults.standard.object(forKey: "autoInstallUpdates") as? Bool) ?? false
     @Published var availableUpdate: String?
     @Published private(set) var quickCapturePreference = QuickCapturePreferenceStore.load()
-    @Published private(set) var previewStates: [String: DevicePreviewState] = [:]
     @Published private(set) var hiddenDevices = HiddenDevicePreferenceStore.load()
 
     let hotKeyDisplay = HotKey.defaultDisplay
@@ -41,9 +37,6 @@ final class AppModel: ObservableObject {
     private let updater = Updater()
     private var hotKey: HotKey?
     private var isCapturing = false
-    private var previewTasks: [String: Task<Void, Never>] = [:]
-    private var previewWindowVisible = false
-    private var previewPageVisible = false
     private var discoveredDevices: [CaptureDevice] = []
     var dockVisibilityDidChange: ((Bool) -> Void)?
 
@@ -170,174 +163,6 @@ final class AppModel: ObservableObject {
         lastStatus = "Restored all hidden devices."
     }
 
-    // MARK: Live previews
-
-    func setPreviewWindowVisible(_ visible: Bool) {
-        guard previewWindowVisible != visible else { return }
-        previewWindowVisible = visible
-        if visible { refreshDevices() }
-        synchronizeLivePreviewTasks()
-    }
-
-    func setPreviewPageVisible(_ visible: Bool) {
-        guard previewPageVisible != visible else { return }
-        previewPageVisible = visible
-        synchronizeLivePreviewTasks()
-    }
-
-    func setLivePreviewsEnabled(_ enabled: Bool) {
-        guard livePreviewsEnabled != enabled else { return }
-        livePreviewsEnabled = enabled
-        UserDefaults.standard.set(enabled, forKey: "livePreviewsEnabled")
-        synchronizeLivePreviewTasks()
-        lastStatus = enabled
-            ? "Live device previews enabled."
-            : "Live device previews paused."
-    }
-
-    private func reconcileLivePreviews() {
-        let existing = previewStates
-        var next: [String: DevicePreviewState] = [:]
-        for device in devices {
-            next[device.id] = existing[device.id] ?? DevicePreviewState(id: device.id)
-        }
-        if Set(next.keys) != Set(existing.keys) {
-            previewStates = next
-        }
-        synchronizeLivePreviewTasks()
-    }
-
-    private func synchronizeLivePreviewTasks() {
-        let connectedIDs = Set(devices.map(\.id))
-        let disconnectedIDs = previewTasks.keys.filter { !connectedIDs.contains($0) }
-        for id in disconnectedIDs {
-            previewTasks[id]?.cancel()
-            previewTasks.removeValue(forKey: id)
-        }
-
-        guard PreviewActivityPolicy.shouldRun(
-            previewsEnabled: livePreviewsEnabled,
-            windowIsVisible: previewWindowVisible,
-            previewPageIsVisible: previewPageVisible
-        ) else {
-            for task in previewTasks.values { task.cancel() }
-            previewTasks.removeAll()
-            for state in previewStates.values { state.pause() }
-            return
-        }
-
-        for device in devices where previewTasks[device.id] == nil {
-            previewStates[device.id]?.markLoading()
-            previewTasks[device.id] = Task { [weak self] in
-                await self?.runLivePreviewLoop(deviceID: device.id)
-            }
-        }
-    }
-
-    private func runLivePreviewLoop(deviceID: String) async {
-        while !Task.isCancelled {
-            guard let device = devices.first(where: { $0.id == deviceID }),
-                  let state = previewStates[deviceID] else { return }
-
-            if device.connection == .androidUSB || device.connection == .androidWireless {
-                await runAndroidLivePreview(device: device, state: state)
-                if !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 750_000_000)
-                }
-                continue
-            }
-
-            if device.connection == .wireless {
-                await runWirelessLivePreview(device: device, state: state)
-                if !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 750_000_000)
-                }
-                continue
-            }
-
-            if device.connection == .usb {
-                await runUSBLivePreview(device: device, state: state)
-                if !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 750_000_000)
-                }
-                continue
-            }
-        }
-    }
-
-    private func runUSBLivePreview(device: CaptureDevice, state: DevicePreviewState) async {
-        guard await cameraAccessForPreview() else {
-            state.fail("Camera permission needed")
-            return
-        }
-        state.markLoading()
-        do {
-            try await usb.streamPreview(deviceID: device.captureID) { [weak state] png in
-                Task { @MainActor in
-                    guard !Task.isCancelled else { return }
-                    await state?.update(png: png)
-                }
-            }
-        } catch {
-            if !Task.isCancelled { state.fail(Self.previewErrorMessage(error)) }
-        }
-    }
-
-    private func runAndroidLivePreview(device: CaptureDevice, state: DevicePreviewState) async {
-        state.markLoading()
-        // `screenrecord` can wait for screen activity before completing the first
-        // video NAL unit. Seed every new stream with a fresh frame so a preview
-        // resumed after being hidden never displays its cached, pre-pause image.
-        if let initialFrame = try? await android.capture(device: device),
-           !Task.isCancelled {
-            await state.update(png: initialFrame)
-        }
-        do {
-            try await android.streamPreview(
-                device: device,
-                relay: state.videoRelay
-            ) { [weak state] size in
-                Task { @MainActor in state?.markVideoLive(size: size) }
-            }
-        } catch {
-            if !Task.isCancelled { state.fail(Self.previewErrorMessage(error)) }
-        }
-    }
-
-    private func runWirelessLivePreview(device: CaptureDevice, state: DevicePreviewState) async {
-        state.markLoading()
-        do {
-            try await wireless.streamPreview(deviceID: device.captureID) { [weak state] imageData in
-                Task { @MainActor in
-                    guard !Task.isCancelled else { return }
-                    await state?.update(png: imageData, reusableForCapture: false)
-                }
-            }
-        } catch {
-            if !Task.isCancelled { state.fail(Self.previewErrorMessage(error)) }
-        }
-    }
-
-    private func cameraAccessForPreview() async -> Bool {
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
-        case .authorized:
-            return true
-        case .notDetermined:
-            NSApp.activate(ignoringOtherApps: true)
-            return await AVCaptureDevice.requestAccess(for: .video)
-        case .denied, .restricted:
-            return false
-        @unknown default:
-            return false
-        }
-    }
-
-    private static func previewErrorMessage(_ error: Error) -> String {
-        let message = error.localizedDescription
-        if message.count <= 52 { return message }
-        return String(message.prefix(49)) + "…"
-    }
-
     // MARK: Capture
 
     func capture(_ device: CaptureDevice) {
@@ -380,27 +205,20 @@ final class AppModel: ObservableObject {
         lastStatus = "Capturing \(device.name)…"
         Log.shared.log("performCapture: '\(device.name)' [\(device.connection.rawValue)] -> \(destinationFolder.path)")
         do {
-            let maximumAge = LivePreviewRefreshPolicy.maximumFrameAge(for: device.connection)
             let png: Data
-            if livePreviewsEnabled,
-               previewWindowVisible,
-               let recent = previewStates[device.id]?.recentPNG(maximumAge: maximumAge) {
-                png = recent
-            } else {
-                switch device.connection {
-                case .usb:
-                    guard await ensureCameraAccess() else {
-                        if lastStatus.hasPrefix("Capturing") {
-                            lastStatus = "Camera permission needed — grant it, then retry."
-                        }
-                        return
+            switch device.connection {
+            case .usb:
+                guard await ensureCameraAccess() else {
+                    if lastStatus.hasPrefix("Capturing") {
+                        lastStatus = "Camera permission needed — grant it, then retry."
                     }
-                    png = try await usb.capture(deviceID: device.captureID)
-                case .wireless:
-                    png = try await wireless.capture(deviceID: device.captureID)
-                case .androidUSB, .androidWireless:
-                    png = try await android.capture(device: device)
+                    return
                 }
+                png = try await usb.capture(deviceID: device.captureID)
+            case .wireless:
+                png = try await wireless.capture(deviceID: device.captureID)
+            case .androidUSB, .androidWireless:
+                png = try await android.capture(device: device)
             }
             try save(png: png, device: device)
         } catch {

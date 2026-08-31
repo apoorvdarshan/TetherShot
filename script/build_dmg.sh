@@ -27,20 +27,10 @@ cp Resources/Info.plist "$CONTENTS/Info.plist"
 cp \
   scripts/install-tunneld.sh \
   scripts/uninstall-tunneld.sh \
-  scripts/wireless-preview.py \
   "$CONTENTS/Resources/"
 chmod +x \
   "$CONTENTS/MacOS/TetherShot" \
-  "$CONTENTS/Resources/"*.sh \
-  "$CONTENTS/Resources/"*.py
-
-# Wi-Fi live preview depends on this bundled helper. Fail the release build
-# here instead of producing a signed app that can discover phones but cannot
-# display them.
-[[ -x "$CONTENTS/Resources/wireless-preview.py" ]] || {
-  echo "error: packaged app is missing the Wi-Fi live-preview helper" >&2
-  exit 1
-}
+  "$CONTENTS/Resources/"*.sh
 
 ICON_TMP="$(mktemp -d)/AppIcon.iconset"
 mkdir -p "$ICON_TMP"

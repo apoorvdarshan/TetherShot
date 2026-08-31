@@ -1,96 +1,63 @@
 import AppKit
 import SwiftUI
 
-private enum AppSection: String, CaseIterable, Identifiable {
-    case livePreview = "Live Preview"
-    case capture = "Capture & Save"
-    case settings = "Settings"
-    case about = "About"
-
-    var id: String { rawValue }
-
-    var icon: String {
-        switch self {
-        case .livePreview: return "play.rectangle.on.rectangle"
-        case .capture: return "camera"
-        case .settings: return "gearshape"
-        case .about: return "info.circle"
-        }
-    }
-}
-
 struct MainWindow: View {
     @ObservedObject var model: AppModel
     let appDelegate: AppDelegate
-    @State private var selection: AppSection = .livePreview
 
     var body: some View {
-        NavigationSplitView {
-            sidebar
-                .navigationSplitViewColumnWidth(min: 172, ideal: 196, max: 230)
-        } detail: {
-            VStack(spacing: 0) {
-                detailContent
-                StatusFooter(model: model)
+        VStack(spacing: 0) {
+            DashboardHeader(model: model)
+            ScrollView {
+                VStack(spacing: 12) {
+                    CaptureDashboardSection(model: model)
+                    StorageDashboardSection(model: model)
+                    ConnectionsDashboardSection(model: model)
+                    BackgroundDashboardSection(model: model)
+                    UpdatesDashboardSection(model: model)
+                    ProjectDashboardSection()
+                }
+                .padding(18)
             }
-            .background(Color(nsColor: .windowBackgroundColor))
+            StatusFooter(model: model)
         }
-        .navigationSplitViewStyle(.balanced)
+        .background(Color(nsColor: .windowBackgroundColor))
         .tint(TetherShotTheme.accent)
         .readWindow { appDelegate.attach(to: $0, model: model) }
     }
+}
 
-    private var sidebar: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Image(nsImage: NSApplication.shared.applicationIconImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 38, height: 38)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("TetherShot")
-                        .font(.system(size: 16, weight: .bold))
-                    Text("iPhone + Android")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
+private struct DashboardHeader: View {
+    @ObservedObject var model: AppModel
 
-            List(AppSection.allCases, selection: $selection) { section in
-                Label(section.rawValue, systemImage: section.icon)
-                    .tag(section)
-                    .accessibilityLabel(section.rawValue)
-            }
-            .listStyle(.sidebar)
+    var body: some View {
+        HStack(spacing: 13) {
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 48, height: 48)
 
-            VStack(alignment: .leading, spacing: 7) {
-                Label(deviceStatus, systemImage: deviceStatusIcon)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(model.devices.isEmpty ? Color.secondary : TetherShotTheme.accent)
-                Text("TetherShot \(model.appVersion)")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("TetherShot")
+                    .font(.system(size: 22, weight: .bold))
+                Text("iPhone and Android screenshots from your Mac")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(.regularMaterial)
+
+            Spacer()
+
+            Label(deviceStatus, systemImage: deviceStatusIcon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(model.devices.isEmpty ? Color.secondary : TetherShotTheme.accent)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(.quaternary, in: Capsule())
         }
-    }
-
-    @ViewBuilder
-    private var detailContent: some View {
-        switch selection {
-        case .livePreview:
-            LivePreviewPage(model: model)
-        case .capture:
-            CaptureSettingsPage(model: model)
-        case .settings:
-            PreferencesPage(model: model)
-        case .about:
-            AboutPage(model: model)
-        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(.regularMaterial)
+        .overlay(alignment: .bottom) { Divider() }
     }
 
     private var deviceStatus: String {
@@ -105,645 +72,273 @@ struct MainWindow: View {
     }
 }
 
-private struct LivePreviewPage: View {
+private struct CaptureDashboardSection: View {
     @ObservedObject var model: AppModel
-    @State private var selectedDeviceID = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            PageHeader(
-                title: "Live Preview",
-                detail: "Watch connected phones live and capture their latest frames"
-            ) {
-                Toggle("Live", isOn: Binding(
-                    get: { model.livePreviewsEnabled },
-                    set: { model.setLivePreviewsEnabled($0) }
-                ))
-                .toggleStyle(.switch)
-                .help("Enable or pause live device previews")
-            }
-
-            if model.devices.isEmpty {
-                emptyState
-            } else {
-                LivePreviewWorkspace(model: model, selectedDeviceID: $selectedDeviceID)
-            }
-        }
-        .padding(18)
-        .onAppear {
-            synchronizeSelection()
-            model.setPreviewPageVisible(true)
-        }
-        .onDisappear { model.setPreviewPageVisible(false) }
-        .onChange(of: model.devices.map(\.id)) { _, _ in synchronizeSelection() }
-    }
-
-    private var emptyState: some View {
-        ContentUnavailableView {
-            Label(
-                model.hiddenConnectedDeviceCount > 0 ? "Connected Phones Are Hidden" : "No Phone Detected",
-                systemImage: model.hiddenConnectedDeviceCount > 0 ? "eye.slash" : "iphone.slash"
-            )
-        } description: {
-            Text(model.hiddenConnectedDeviceCount > 0
-                 ? "Restore a hidden phone, or connect another iPhone or Android device."
-                 : "Connect an iPhone over USB/Wi-Fi or an Android phone with USB debugging enabled.")
-        } actions: {
-            if !model.hiddenDevices.isEmpty {
-                HiddenDevicesMenu(model: model)
-            }
-            Button("Refresh Devices", action: model.refreshDevices)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func synchronizeSelection() {
-        if !model.devices.contains(where: { $0.id == selectedDeviceID }) {
-            selectedDeviceID = model.devices.first?.id ?? ""
-        }
-    }
-}
-
-private struct LivePreviewWorkspace: View {
-    @ObservedObject var model: AppModel
-    @Binding var selectedDeviceID: String
-
-    var body: some View {
-        GeometryReader { geometry in
-            let columnCount = LivePreviewLayoutPolicy.columnCount(
-                availableWidth: geometry.size.width,
-                deviceCount: model.devices.count
-            )
-
-            if columnCount > 1 {
-                LivePreviewGrid(
-                    model: model,
-                    columnCount: columnCount,
-                    availableHeight: geometry.size.height
-                )
-            } else {
-                CompactLivePreview(model: model, selectedDeviceID: $selectedDeviceID)
-            }
-        }
-    }
-}
-
-private struct CompactLivePreview: View {
-    @ObservedObject var model: AppModel
-    @Binding var selectedDeviceID: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            DeviceSelector(devices: model.devices, selectedDeviceID: $selectedDeviceID)
-
-            if let device = selectedDevice,
-               let preview = model.previewStates[device.id] {
-                FullDevicePreview(
-                    device: device,
-                    preview: preview,
-                    previewsEnabled: model.livePreviewsEnabled
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                CompactPreviewActions(model: model, device: device)
-            }
-        }
-    }
-
-    private var selectedDevice: CaptureDevice? {
-        model.devices.first(where: { $0.id == selectedDeviceID }) ?? model.devices.first
-    }
-}
-
-private struct DeviceSelector: View {
-    let devices: [CaptureDevice]
-    @Binding var selectedDeviceID: String
-
-    var body: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 8) {
-                ForEach(devices) { device in
-                    Button {
-                        selectedDeviceID = device.id
-                    } label: {
-                        HStack(spacing: 7) {
-                            Image(systemName: device.systemImageName)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(device.name)
-                                    .font(.system(size: 11.5, weight: .semibold))
-                                Text(device.connectionSummary)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(
-                            selectedDeviceID == device.id
-                                ? TetherShotTheme.accent.opacity(0.18)
-                                : Color(nsColor: .controlBackgroundColor),
-                            in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+        Panel(title: "Capture", detail: "USB and Wi-Fi devices") {
+            VStack(spacing: 0) {
+                if model.devices.isEmpty {
+                    emptyDevices
+                } else {
+                    ForEach(Array(model.devices.enumerated()), id: \.element.id) { index, device in
+                        DeviceControlRow(
+                            device: device,
+                            capture: { model.capture(device) },
+                            hide: { model.hideDevice(device) }
                         )
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .stroke(
-                                    selectedDeviceID == device.id
-                                        ? TetherShotTheme.accent.opacity(0.7)
-                                        : Color(nsColor: .separatorColor).opacity(0.45),
-                                    lineWidth: 1
-                                )
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Show \(device.name), \(device.connectionSummary)")
-                    .accessibilityAddTraits(selectedDeviceID == device.id ? .isSelected : [])
-                }
-            }
-        }
-        .scrollIndicators(.hidden)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Connected device selector")
-    }
-}
-
-private struct LivePreviewGrid: View {
-    @ObservedObject var model: AppModel
-    let columnCount: Int
-    let availableHeight: CGFloat
-
-    var body: some View {
-        VStack(spacing: LivePreviewLayoutPolicy.spacing) {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: LivePreviewLayoutPolicy.spacing) {
-                    ForEach(model.devices) { device in
-                        if let preview = model.previewStates[device.id] {
-                            LivePreviewTile(
-                                model: model,
-                                device: device,
-                                preview: preview
-                            )
-                            .frame(height: tileHeight)
+                        if index < model.devices.count - 1 {
+                            Divider().padding(.leading, 54)
                         }
                     }
                 }
-            }
-            .scrollIndicators(.automatic)
 
-            LivePreviewGridActions(model: model)
-        }
-    }
+                Divider()
 
-    private var columns: [GridItem] {
-        Array(
-            repeating: GridItem(
-                .flexible(minimum: LivePreviewLayoutPolicy.minimumColumnWidth),
-                spacing: LivePreviewLayoutPolicy.spacing
-            ),
-            count: columnCount
-        )
-    }
-
-    private var tileHeight: CGFloat {
-        LivePreviewLayoutPolicy.tileHeight(
-            availableHeight: availableHeight,
-            deviceCount: model.devices.count,
-            columnCount: columnCount
-        )
-    }
-}
-
-private struct LivePreviewTile: View {
-    @ObservedObject var model: AppModel
-    let device: CaptureDevice
-    @ObservedObject var preview: DevicePreviewState
-
-    var body: some View {
-        VStack(spacing: 9) {
-            FullDevicePreview(
-                device: device,
-                preview: preview,
-                previewsEnabled: model.livePreviewsEnabled
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            HStack(spacing: 8) {
-                Button("Capture", systemImage: "camera.fill") {
-                    model.capture(device)
+                SettingRow(
+                    icon: "scope",
+                    title: "Quick Capture Device",
+                    detail: "Used by \(model.hotKeyDisplay); remembered across launches"
+                ) {
+                    QuickCaptureDevicePicker(model: model)
+                        .labelsHidden()
+                        .frame(width: 210)
                 }
-                .buttonStyle(.borderedProminent)
 
-                Spacer()
-
-                Menu("Device", systemImage: "ellipsis.circle") {
-                    Button("Hide \(device.name)", systemImage: "eye.slash") {
-                        model.hideDevice(device)
+                if !model.hiddenDevices.isEmpty {
+                    Divider().padding(.leading, 48)
+                    SettingRow(
+                        icon: "eye.slash",
+                        title: "Hidden Devices",
+                        detail: "Excluded from captures and the global hotkey"
+                    ) {
+                        HiddenDevicesMenu(model: model)
                     }
                 }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-            }
-            .controlSize(.small)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(device.name) live controls")
-    }
-}
 
-private struct CompactPreviewActions: View {
-    @ObservedObject var model: AppModel
-    let device: CaptureDevice
+                Divider()
 
-    var body: some View {
-        HStack(spacing: 9) {
-            Button("Capture", systemImage: "camera.fill") {
-                model.capture(device)
-            }
-            .buttonStyle(.borderedProminent)
-
-            if model.devices.count > 1 {
-                Button("All Phones", systemImage: "rectangle.stack.badge.plus") {
-                    model.captureAll()
-                }
-            }
-
-            Button("Refresh", systemImage: "arrow.clockwise") {
-                model.refreshDevices()
-            }
-
-            Spacer()
-
-            Menu("Device", systemImage: "ellipsis.circle") {
-                Button("Hide \(device.name)", systemImage: "eye.slash") {
-                    model.hideDevice(device)
-                }
-            }
-        }
-        .controlSize(.regular)
-    }
-}
-
-private struct LivePreviewGridActions: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        HStack(spacing: 9) {
-            Button("Screenshot All", systemImage: "rectangle.stack.badge.plus") {
-                model.captureAll()
-            }
-            .buttonStyle(.borderedProminent)
-
-            Button("Refresh Devices", systemImage: "arrow.clockwise") {
-                model.refreshDevices()
-            }
-
-            Spacer()
-
-            Text("\(model.devices.count) live device\(model.devices.count == 1 ? "" : "s")")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .controlSize(.regular)
-    }
-}
-
-private struct FullDevicePreview: View {
-    let device: CaptureDevice
-    @ObservedObject var preview: DevicePreviewState
-    let previewsEnabled: Bool
-
-    private let previewCornerRadius: CGFloat = 28
-
-    var body: some View {
-        ZStack {
-            previewStage
-                .aspectRatio(preview.displayAspectRatio, contentMode: .fit)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Live preview of \(device.name)")
-        .accessibilityValue(previewStatus)
-    }
-
-    private var previewStage: some View {
-        ZStack {
-            Color.black.opacity(0.94)
-
-            if isAndroidVideoPreview, previewsEnabled {
-                if let image = preview.image {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .padding(7)
-                }
-                LiveVideoPreview(relay: preview.videoRelay)
-                if preview.image == nil, preview.phase != .live { previewPlaceholder }
-            } else if let image = preview.image {
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .padding(7)
-            } else {
-                previewPlaceholder
-            }
-
-            VStack {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(device.name)
-                            .font(.system(size: 13, weight: .bold))
-                        Text(device.connectionSummary)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.68))
+                HStack(spacing: 10) {
+                    Button("Refresh Devices", systemImage: "arrow.clockwise", action: model.refreshDevices)
+                    if model.devices.count > 1 {
+                        Button("Screenshot All", systemImage: "camera.fill", action: model.captureAll)
+                            .buttonStyle(.borderedProminent)
                     }
-                    .foregroundStyle(.white)
-                    .padding(10)
-                    .background(.black.opacity(0.58), in: RoundedRectangle(cornerRadius: 9))
-
                     Spacer()
-
-                    if previewsEnabled, preview.phase == .live {
-                        Text("LIVE")
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 4)
-                            .background(Color.green.opacity(0.9), in: Capsule())
-                    }
                 }
-                Spacer()
+                .controlSize(.small)
+                .padding(12)
             }
-            .padding(12)
-        }
-        .compositingGroup()
-        .clipShape(.rect(cornerRadius: previewCornerRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: previewCornerRadius, style: .continuous)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
         }
     }
 
-    private var previewPlaceholder: some View {
-        VStack(spacing: 12) {
-            if previewsEnabled, preview.phase == .loading {
-                ProgressView()
-                    .controlSize(.large)
-            } else {
-                Image(systemName: previewsEnabled ? device.systemImageName : "pause.fill")
-                    .font(.system(size: 42, weight: .medium))
+    private var emptyDevices: some View {
+        HStack(spacing: 12) {
+            Image(systemName: model.hiddenConnectedDeviceCount > 0 ? "eye.slash" : "iphone.slash")
+                .font(.system(size: 22))
+                .foregroundStyle(.secondary)
+                .frame(width: 34)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(model.hiddenConnectedDeviceCount > 0 ? "Connected phones are hidden" : "No phone detected")
+                    .fontWeight(.semibold)
+                Text(model.hiddenConnectedDeviceCount > 0
+                     ? "Restore a hidden phone below, or connect another device."
+                     : "Connect an iPhone over USB/Wi-Fi or an authorized Android phone.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             }
-            Text(previewStatus)
-                .font(.headline)
+            Spacer()
         }
-        .foregroundStyle(.white.opacity(0.72))
+        .padding(14)
     }
+}
 
-    private var isAndroidVideoPreview: Bool {
-        device.connection == .androidUSB || device.connection == .androidWireless
-    }
+private struct StorageDashboardSection: View {
+    @ObservedObject var model: AppModel
 
-    private var previewStatus: String {
-        guard previewsEnabled else { return "Preview paused" }
-        switch preview.phase {
-        case .idle: return "Waiting for preview"
-        case .loading: return "Loading live preview"
-        case .live: return "Live"
-        case .paused: return "Preview paused"
-        case .failed(let message): return message
+    var body: some View {
+        Panel(title: "Save & copy", detail: model.destinationFolder.path) {
+            VStack(spacing: 0) {
+                SettingRow(icon: "folder", title: "Destination", detail: model.destinationFolder.lastPathComponent) {
+                    HStack(spacing: 8) {
+                        Button("Open", action: model.openFolder)
+                        Button("Choose…", action: model.chooseFolder)
+                    }
+                    .controlSize(.small)
+                }
+                Divider().padding(.leading, 48)
+                SettingRow(icon: "doc.on.clipboard", title: "Copy to Clipboard", detail: "Make every capture ready to paste") {
+                    Toggle("Copy to Clipboard", isOn: Binding(
+                        get: { model.copyToClipboard },
+                        set: { model.setCopyToClipboard($0) }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                }
+                Divider().padding(.leading, 48)
+                SettingRow(icon: "folder.badge.gearshape", title: "Organize by Device", detail: "Create a folder for each phone") {
+                    Toggle("Organize by Device", isOn: Binding(
+                        get: { model.organizeByDevice },
+                        set: { model.setOrganizeByDevice($0) }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                }
+            }
         }
     }
 }
 
-private struct CaptureSettingsPage: View {
+private struct ConnectionsDashboardSection: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                PageHeader(title: "Capture & Save", detail: "Choose targets, storage, and connected-device behavior") {
-                    Button("Refresh", systemImage: "arrow.clockwise", action: model.refreshDevices)
-                }
-
-                Panel(title: "Capture", detail: "\(model.devices.count) visible device\(model.devices.count == 1 ? "" : "s")") {
-                    VStack(spacing: 0) {
-                        if model.devices.isEmpty {
-                            Text("No visible device. Connect a phone or restore a hidden one.")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(14)
-                        } else {
-                            ForEach(Array(model.devices.enumerated()), id: \.element.id) { index, device in
-                                DeviceControlRow(
-                                    device: device,
-                                    capture: { model.capture(device) },
-                                    hide: { model.hideDevice(device) }
-                                )
-                                if index < model.devices.count - 1 { Divider().padding(.leading, 48) }
-                            }
-                        }
-
-                        Divider()
-                        SettingRow(icon: "scope", title: "Quick Capture Device", detail: "Used by \(model.hotKeyDisplay); remembered across launches") {
-                            QuickCaptureDevicePicker(model: model)
-                                .labelsHidden()
-                                .frame(width: 220)
-                        }
-                        Divider().padding(.leading, 48)
-                        SettingRow(icon: "play.rectangle.on.rectangle", title: "Live Previews", detail: "Refresh only while the app window is visible") {
-                            Toggle("Live Previews", isOn: Binding(
-                                get: { model.livePreviewsEnabled },
-                                set: { model.setLivePreviewsEnabled($0) }
-                            ))
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                        }
-                        if !model.hiddenDevices.isEmpty {
-                            Divider().padding(.leading, 48)
-                            SettingRow(icon: "eye.slash", title: "Hidden Devices", detail: "Excluded from previews, hotkey, and Screenshot All") {
-                                HiddenDevicesMenu(model: model)
-                            }
-                        }
+        Panel(title: "Connections", detail: "iPhone and Android") {
+            VStack(spacing: 0) {
+                SettingRow(
+                    icon: "wifi",
+                    title: "iPhone Wi-Fi",
+                    detail: model.wirelessReady ? "Developer-services tunnel is ready" : "One-time wireless setup required"
+                ) {
+                    if model.wirelessReady {
+                        ReadyLabel()
+                    } else {
+                        Button("Set Up…", action: model.setupWireless)
+                            .controlSize(.small)
                     }
                 }
-
-                Panel(title: "Save & copy", detail: model.destinationFolder.path) {
-                    VStack(spacing: 0) {
-                        SettingRow(icon: "folder", title: "Destination", detail: model.destinationFolder.lastPathComponent) {
-                            HStack(spacing: 8) {
-                                Button("Open", action: model.openFolder)
-                                Button("Choose…", action: model.chooseFolder)
-                            }
-                        }
-                        Divider().padding(.leading, 48)
-                        SettingRow(icon: "doc.on.clipboard", title: "Copy to Clipboard", detail: "Make every capture ready to paste") {
-                            Toggle("Copy to Clipboard", isOn: Binding(
-                                get: { model.copyToClipboard },
-                                set: { model.setCopyToClipboard($0) }
-                            ))
-                            .labelsHidden().toggleStyle(.switch)
-                        }
-                        Divider().padding(.leading, 48)
-                        SettingRow(icon: "folder.badge.gearshape", title: "Organize by Device", detail: "Create a folder for each phone") {
-                            Toggle("Organize by Device", isOn: Binding(
-                                get: { model.organizeByDevice },
-                                set: { model.setOrganizeByDevice($0) }
-                            ))
-                            .labelsHidden().toggleStyle(.switch)
-                        }
-                    }
-                }
-
-                Panel(title: "Connections", detail: "iPhone and Android") {
-                    VStack(spacing: 0) {
-                        SettingRow(icon: "wifi", title: "iPhone Wi-Fi", detail: model.wirelessReady ? "Developer-services tunnel is ready" : "One-time wireless setup required") {
-                            if model.wirelessReady {
-                                Label("Ready", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-                            } else {
-                                Button("Set Up…", action: model.setupWireless)
-                            }
-                        }
-                        Divider().padding(.leading, 48)
-                        SettingRow(icon: "apps.iphone", title: "Android (ADB)", detail: model.androidReady ? "Platform tools found; enable USB debugging on the phone" : "Install Android Platform Tools, then refresh") {
-                            if model.androidReady {
-                                Label("Ready", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-                            } else {
-                                Button("Setup Guide…", action: model.openAndroidSetup)
-                            }
-                        }
+                Divider().padding(.leading, 48)
+                SettingRow(
+                    icon: "apps.iphone",
+                    title: "Android (ADB)",
+                    detail: model.androidReady ? "Platform tools found; enable USB or wireless debugging" : "Install Android Platform Tools, then refresh"
+                ) {
+                    if model.androidReady {
+                        ReadyLabel()
+                    } else {
+                        Button("Setup Guide…", action: model.openAndroidSetup)
+                            .controlSize(.small)
                     }
                 }
             }
-            .padding(18)
         }
     }
 }
 
-private struct PreferencesPage: View {
+private struct ReadyLabel: View {
+    var body: some View {
+        Label("Ready", systemImage: "checkmark.circle.fill")
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.green)
+    }
+}
+
+private struct BackgroundDashboardSection: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                PageHeader(title: "Settings", detail: "Background behavior, visibility, and updates") { EmptyView() }
-
-                Panel(title: "Background", detail: "Capture can stay active when the window closes") {
-                    VStack(spacing: 0) {
-                        SettingRow(icon: "menubar.rectangle", title: "Show in Menu Bar", detail: "Quick capture and settings") {
-                            Toggle("Show in Menu Bar", isOn: Binding(
-                                get: { model.showInMenuBar },
-                                set: { model.setShowInMenuBar($0) }
-                            ))
-                            .labelsHidden().toggleStyle(.switch)
-                        }
-                        Divider().padding(.leading, 48)
-                        SettingRow(icon: "dock.rectangle", title: "Show in Dock", detail: "Keep TetherShot visible in the Dock when its window closes") {
-                            Toggle("Show in Dock", isOn: Binding(
-                                get: { model.showInDock },
-                                set: { model.setShowInDock($0) }
-                            ))
-                            .labelsHidden().toggleStyle(.switch)
-                        }
-                        Divider().padding(.leading, 48)
-                        SettingRow(icon: "power", title: "Launch at Login", detail: "Keep TetherShot available after sign-in") {
-                            Toggle("Launch at Login", isOn: Binding(
-                                get: { model.launchAtLogin },
-                                set: { model.setLaunchAtLogin($0) }
-                            ))
-                            .labelsHidden().toggleStyle(.switch)
-                        }
-                        Divider().padding(.leading, 48)
-                        SettingRow(icon: "command", title: "Quick Capture", detail: "Current target: \(model.quickCaptureTargetName)") {
-                            Text(model.hotKeyDisplay)
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .padding(.horizontal, 9)
-                                .padding(.vertical, 5)
-                                .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
-                        }
-                    }
+        Panel(title: "Background", detail: "Capture stays active when this window closes") {
+            VStack(spacing: 0) {
+                SettingRow(icon: "menubar.rectangle", title: "Show in Menu Bar", detail: "Quick capture and settings") {
+                    Toggle("Show in Menu Bar", isOn: Binding(
+                        get: { model.showInMenuBar },
+                        set: { model.setShowInMenuBar($0) }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
                 }
-
-                Panel(title: "Updates", detail: "Installed version \(model.appVersion)") {
-                    VStack(spacing: 0) {
-                        SettingRow(icon: "arrow.triangle.2.circlepath", title: "Automatically Check", detail: "Look for signed GitHub releases") {
-                            Toggle("Automatically Check", isOn: Binding(
-                                get: { model.autoCheckForUpdates },
-                                set: { model.setAutoCheckForUpdates($0) }
-                            ))
-                            .labelsHidden().toggleStyle(.switch)
-                        }
-                        Divider().padding(.leading, 48)
-                        SettingRow(icon: "arrow.down.app", title: "Install Automatically", detail: "Verify, replace, and relaunch when an update appears") {
-                            Toggle("Install Automatically", isOn: Binding(
-                                get: { model.autoInstallUpdates },
-                                set: { model.setAutoInstallUpdates($0) }
-                            ))
-                            .labelsHidden().toggleStyle(.switch)
-                        }
-                        Divider().padding(.leading, 48)
-                        HStack {
-                            Text(model.availableUpdate.map { "Version \($0) is available" } ?? "TetherShot \(model.appVersion)")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            if model.availableUpdate != nil {
-                                Button("Install & Relaunch", action: model.installUpdate)
-                                    .buttonStyle(.borderedProminent)
-                            } else {
-                                Button("Check Now") { model.checkForUpdates(manual: true) }
-                            }
-                        }
-                        .padding(12)
-                    }
+                Divider().padding(.leading, 48)
+                SettingRow(icon: "dock.rectangle", title: "Show in Dock", detail: "Keep TetherShot visible in the Dock") {
+                    Toggle("Show in Dock", isOn: Binding(
+                        get: { model.showInDock },
+                        set: { model.setShowInDock($0) }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                }
+                Divider().padding(.leading, 48)
+                SettingRow(icon: "power", title: "Launch at Login", detail: "Keep TetherShot available after sign-in") {
+                    Toggle("Launch at Login", isOn: Binding(
+                        get: { model.launchAtLogin },
+                        set: { model.setLaunchAtLogin($0) }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                }
+                Divider().padding(.leading, 48)
+                SettingRow(icon: "command", title: "Quick Capture", detail: "Current target: \(model.quickCaptureTargetName)") {
+                    Text(model.hotKeyDisplay)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
                 }
             }
-            .padding(18)
         }
     }
 }
 
-private struct AboutPage: View {
+private struct UpdatesDashboardSection: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                VStack(spacing: 10) {
-                    Image(nsImage: NSApplication.shared.applicationIconImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 88, height: 88)
-                    Text("TetherShot")
-                        .font(.system(size: 28, weight: .bold))
-                    Text("Version \(model.appVersion) · Native macOS capture for iPhone and Android")
+        Panel(title: "Updates", detail: "Installed version \(model.appVersion)") {
+            VStack(spacing: 0) {
+                SettingRow(icon: "arrow.triangle.2.circlepath", title: "Automatically Check", detail: "Look for signed GitHub releases") {
+                    Toggle("Automatically Check", isOn: Binding(
+                        get: { model.autoCheckForUpdates },
+                        set: { model.setAutoCheckForUpdates($0) }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                }
+                Divider().padding(.leading, 48)
+                SettingRow(icon: "arrow.down.app", title: "Install Automatically", detail: "Verify, replace, and relaunch when an update appears") {
+                    Toggle("Install Automatically", isOn: Binding(
+                        get: { model.autoInstallUpdates },
+                        set: { model.setAutoInstallUpdates($0) }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                }
+                Divider().padding(.leading, 48)
+                HStack {
+                    Text(model.availableUpdate.map { "Version \($0) is available" } ?? "TetherShot \(model.appVersion)")
+                        .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                    Text("Local-first · Open source · MIT licensed")
-                        .font(.callout)
-                        .foregroundStyle(.tertiary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 22)
-
-                Panel(title: "Project & support", detail: "Apoorv Darshan") {
-                    VStack(spacing: 0) {
-                        ProjectLinkRow(icon: "globe", title: "TetherShot website", detail: "Documentation, privacy, and terms", url: ProjectLinks.website)
-                        Divider().padding(.leading, 48)
-                        ProjectLinkRow(icon: "chevron.left.forwardslash.chevron.right", title: "Open-source repository", detail: "View the code on GitHub", url: ProjectLinks.repository)
-                        Divider().padding(.leading, 48)
-                        ProjectLinkRow(icon: "shippingbox", title: "View on npm", detail: "Install the latest public release", url: ProjectLinks.npm)
-                        Divider().padding(.leading, 48)
-                        ProjectLinkRow(icon: "ladybug", title: "Report a bug", detail: "Open a GitHub issue", url: ProjectLinks.issues)
-                        Divider().padding(.leading, 48)
-                        ProjectLinkRow(icon: "doc.text", title: "MIT license", detail: "Read the open-source license", url: ProjectLinks.license)
-                        Divider().padding(.leading, 48)
-                        ProjectLinkRow(icon: "heart", title: "Support on Ko-fi", detail: "Sponsor development", url: ProjectLinks.koFi)
-                        Divider().padding(.leading, 48)
-                        ProjectLinkRow(icon: "megaphone", title: "View on Product Hunt", detail: "Follow the launch and leave feedback", url: ProjectLinks.productHunt)
+                    Spacer()
+                    if model.availableUpdate != nil {
+                        Button("Install & Relaunch", action: model.installUpdate)
+                            .buttonStyle(.borderedProminent)
+                    } else {
+                        Button("Check Now") { model.checkForUpdates(manual: true) }
                     }
                 }
+                .controlSize(.small)
+                .padding(12)
             }
-            .padding(28)
-            .frame(maxWidth: 760)
-            .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+private struct ProjectDashboardSection: View {
+    var body: some View {
+        Panel(title: "Project & support", detail: "Open source") {
+            VStack(spacing: 0) {
+                ProjectLinkRow(icon: "globe", title: "TetherShot website", detail: "Documentation, privacy, and terms", url: ProjectLinks.website)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "chevron.left.forwardslash.chevron.right", title: "Open-source repository", detail: "View the code on GitHub", url: ProjectLinks.repository)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "shippingbox", title: "View on npm", detail: "Install the latest public release", url: ProjectLinks.npm)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "ladybug", title: "Report a bug", detail: "Open a GitHub issue", url: ProjectLinks.issues)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "doc.text", title: "MIT license", detail: "Read the open-source license", url: ProjectLinks.license)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "heart", title: "Support on Ko-fi", detail: "Sponsor development", url: ProjectLinks.koFi)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "megaphone", title: "View on Product Hunt", detail: "Follow the launch and leave feedback", url: ProjectLinks.productHunt)
+            }
         }
     }
 }
@@ -756,24 +351,26 @@ private struct DeviceControlRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: device.systemImageName)
-                .font(.system(size: 16, weight: .medium))
+                .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(TetherShotTheme.accent)
                 .frame(width: 30, height: 30)
-                .background(TetherShotTheme.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                .background(TetherShotTheme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
             VStack(alignment: .leading, spacing: 2) {
                 Text(device.name).fontWeight(.semibold)
-                Text(device.connectionSummary).font(.caption).foregroundStyle(.secondary)
+                Text(device.availableConnectionSummary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             }
             Spacer()
             Button("Capture", systemImage: "camera.fill", action: capture)
                 .buttonStyle(.borderedProminent)
+                .controlSize(.small)
             Menu("More", systemImage: "ellipsis.circle") {
                 Button("Hide This Device", systemImage: "eye.slash", action: hide)
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
         }
-        .controlSize(.small)
         .padding(12)
     }
 }
@@ -795,44 +392,24 @@ private struct HiddenDevicesMenu: View {
     }
 }
 
-private struct PageHeader<Accessory: View>: View {
-    let title: String
-    let detail: String
-    let accessory: Accessory
-
-    init(title: String, detail: String, @ViewBuilder accessory: () -> Accessory) {
-        self.title = title
-        self.detail = detail
-        self.accessory = accessory()
-    }
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 22, weight: .bold))
-                Text(detail).font(.callout).foregroundStyle(.secondary)
-            }
-            Spacer()
-            accessory
-        }
-    }
-}
-
 private struct StatusFooter: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Image(systemName: statusIcon)
                 .foregroundStyle(model.lastStatus.hasPrefix("Error") ? Color.red : Color.secondary)
-            Text(model.lastStatus.isEmpty ? "Ready" : model.lastStatus)
-                .font(.caption)
+            Text(model.lastStatus.isEmpty ? "Ready — close this window to keep TetherShot running in the background." : model.lastStatus)
+                .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
             Spacer()
+            Text("TetherShot \(model.appVersion)")
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(.tertiary)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 11)
         .background(.regularMaterial)
         .overlay(alignment: .top) { Divider() }
     }
@@ -859,7 +436,9 @@ private struct ProjectLinkRow: View {
                     .frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(.system(size: 12.5, weight: .semibold))
-                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                    Text(detail)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Image(systemName: "arrow.up.right")
@@ -878,7 +457,7 @@ private struct ProjectLinkRow: View {
 private struct Panel<Content: View>: View {
     let title: String
     let detail: String
-    let content: Content
+    @ViewBuilder let content: Content
 
     init(title: String, detail: String, @ViewBuilder content: () -> Content) {
         self.title = title
@@ -892,7 +471,7 @@ private struct Panel<Content: View>: View {
                 Text(title).font(.system(size: 13, weight: .bold))
                 Spacer()
                 Text(detail)
-                    .font(.caption)
+                    .font(.system(size: 10.5))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -914,7 +493,7 @@ private struct SettingRow<Accessory: View>: View {
     let icon: String
     let title: String
     let detail: String
-    let accessory: Accessory
+    @ViewBuilder let accessory: Accessory
 
     init(icon: String, title: String, detail: String, @ViewBuilder accessory: () -> Accessory) {
         self.icon = icon
@@ -932,7 +511,7 @@ private struct SettingRow<Accessory: View>: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 12.5, weight: .semibold))
                 Text(detail)
-                    .font(.caption)
+                    .font(.system(size: 10.5))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }

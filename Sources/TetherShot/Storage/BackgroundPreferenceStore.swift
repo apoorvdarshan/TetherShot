@@ -19,7 +19,6 @@ enum BackgroundPreferenceStore {
         "copyToClipboard",
         showInMenuBarKey,
         showInDockKey,
-        "livePreviewsEnabled",
         "autoCheckForUpdates",
         "autoInstallUpdates",
         "destinationFolderBookmark",

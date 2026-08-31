@@ -39,24 +39,23 @@
 
 ---
 
-> **Status — shipping.** iPhone USB/Wi-Fi capture, Android ADB capture, live previews, clipboard, global hotkey, per-device folders, Homebrew and npm installs, and in-app self-update are working. Built and tested on macOS 26 (Tahoe) with iOS 26.
+> **Status — shipping.** iPhone USB/Wi-Fi capture, Android ADB capture, clipboard, global hotkey, per-device folders, Homebrew and npm installs, and in-app self-update are working. Built and tested on macOS 26 (Tahoe) with iOS 26.
 
 ## Why TetherShot
 
-macOS already exposes a tethered iPhone's screen as an AVFoundation source, while Android exposes its framebuffer through ADB. TetherShot turns both into a focused live-preview and one-click capture workflow that writes straight to disk and your clipboard — including cable-free iPhone Wi-Fi capture through Apple's developer-services tunnel.
+macOS already exposes a tethered iPhone's screen as an AVFoundation source, while Android exposes its framebuffer through ADB. TetherShot turns both into a focused one-click capture workflow that writes straight to disk and your clipboard — including cable-free iPhone Wi-Fi capture through Apple's developer-services tunnel.
 
 ## Features
 
 - 🔌 **USB capture** — a trusted, cabled iPhone is grabbed at full resolution via native AVFoundation. Instant, zero setup.
 - 📶 **Wi-Fi capture** — cable-free over your local network via a RemoteXPC tunnel ([`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3)). Pixel-perfect, even when the phone is locked.
 - 🤖 **Android capture** — discover authorized Android phones through ADB and capture their native framebuffer over USB or wireless debugging.
-- ▶️ **Large live preview** — select any connected phone and view it at near-full window size; previews pause automatically when the window closes.
 - 🪪 **Stable device identity** — USB/Wi-Fi appearances of the same phone are merged, names can change safely, and hidden/quick-capture choices persist.
 - 📋 **Clipboard** — every capture is copied, ready to paste (toggle on by default).
 - ⌨️ **Global hotkey** — press <kbd>⌘⇧7</kbd> anywhere to capture every connected device, or choose one preferred iPhone and remember it across launches.
 - 🗂️ **Your folder, your rules** — any destination, timestamped filenames, optional per-device subfolders.
 - ⬆️ **Self-updating** — in-app **Check for Updates** downloads the signed, notarized GitHub release, verifies it, replaces the current app in place, and relaunches.
-- 🧭 **Navigable Mac app** — dedicated Live Preview, Capture & Save, Settings, and About pages; the Dock and menu-bar presence are independently configurable.
+- 🧭 **Single-window Mac dashboard** — capture, storage, connections, background behavior, updates, and project links stay together without sidebar navigation.
 - 🍥 **Optional menu-bar control** — enabled by default for quick capture and settings, and can be hidden persistently.
 - 🚀 **Launch at login** — keeps capture and the global hotkey ready in the background.
 - 🔒 **Local-first** — no account, no analytics, no servers. Screenshots never leave your Mac.
@@ -122,8 +121,7 @@ Open TetherShot from Applications or Spotlight, or click its menu-bar icon, then
 |---|---|
 | <kbd>⌘⇧7</kbd> | Quick-capture the saved preferred phone, or every visible connected device by default |
 | **Quick Capture Device** | Choose one phone for the hotkey; the stable selection persists across names and transports |
-| **Live Previews** | Show the selected phone at full size while the app window is visible |
-| **Hidden Devices** | Exclude unwanted phones from previews and captures, then restore them at any time |
+| **Hidden Devices** | Exclude unwanted phones from captures, then restore them at any time |
 | **Copy to Clipboard** | Also place each capture on the clipboard (default on) |
 | **Organize by Device** | Save into a per-device subfolder |
 | **Choose Folder…** | Pick any destination; remembered across launches |
@@ -168,7 +166,6 @@ tethershot version    # print the installed version
 | `USBCapture` | Flips the CoreMediaIO screen-capture flag, finds the iPhone as a `.muxed` device, grabs one frame → PNG |
 | `WirelessCapture` | Talks to the `tunneld` HTTP API, runs `pymobiledevice3 developer dvt screenshot` over the Wi-Fi tunnel |
 | `AndroidCapture` | Uses ADB device discovery, stable Android IDs, and native `screencap` PNG transfer |
-| `LivePreview` | Maintains efficient per-device preview state while the window is visible |
 | `Updater` | Checks GitHub Releases, verifies the asset digest and Developer ID signature, then atomically replaces and relaunches the current app |
 | `AppModel` | Main-actor state: device list, destination folder, options, status |
 | `MainWindow` / `MenuContent` | Compact SwiftUI app window plus optional `MenuBarExtra` controls |

@@ -65,13 +65,6 @@ struct MenuContent: View {
             get: { model.copyToClipboard },
             set: { model.setCopyToClipboard($0) }
         ))
-        Toggle("Live Device Previews", isOn: Binding(
-            get: { model.livePreviewsEnabled },
-            set: { model.setLivePreviewsEnabled($0) }
-        ))
-
-        Divider()
-
         Toggle("Launch at Login", isOn: Binding(
             get: { model.launchAtLogin },
             set: { model.setLaunchAtLogin($0) }

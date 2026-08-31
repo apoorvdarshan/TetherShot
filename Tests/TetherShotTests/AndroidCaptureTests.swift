@@ -69,18 +69,4 @@ final class AndroidCaptureTests: XCTestCase {
         )
     }
 
-    func testAnnexBParserDeliversCompleteNALUnitsAcrossChunks() {
-        var parser = AnnexBNALParser()
-
-        XCTAssertTrue(parser.append(Data([0, 0, 0, 1, 0x67, 0x01])).isEmpty)
-        XCTAssertEqual(
-            parser.append(Data([0, 0, 1, 0x68, 0x02, 0, 0])),
-            [Data([0x67, 0x01])]
-        )
-        XCTAssertEqual(
-            parser.append(Data([1, 0x65, 0x03, 0x04])),
-            [Data([0x68, 0x02])]
-        )
-        XCTAssertEqual(parser.finish(), [Data([0x65, 0x03, 0x04])])
-    }
 }

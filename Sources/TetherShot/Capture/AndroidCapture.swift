@@ -79,33 +79,6 @@ final class AndroidCapture: CaptureBackend {
         return shot.stdout
     }
 
-    func streamPreview(
-        deviceID: String,
-        relay: VideoSampleBufferRelay,
-        onReady: @escaping @Sendable (CGSize) -> Void
-    ) async throws {
-        let device = CaptureDevice(
-            id: DeviceIdentity.android(androidID: nil, adbSerial: deviceID),
-            captureID: deviceID,
-            name: "Android",
-            connection: AndroidDeviceParser.isWireless(serial: deviceID) ? .androidWireless : .androidUSB
-        )
-        try await streamPreview(device: device, relay: relay, onReady: onReady)
-    }
-
-    func streamPreview(
-        device: CaptureDevice,
-        relay: VideoSampleBufferRelay,
-        onReady: @escaping @Sendable (CGSize) -> Void
-    ) async throws {
-        guard let adb = Self.adbPath else {
-            throw CaptureError.other("Android platform tools are not installed.")
-        }
-        let deviceID = try await currentCaptureID(for: device, adbPath: adb)
-        let stream = AndroidH264PreviewStream(adbPath: adb, deviceID: deviceID)
-        try await stream.run(relay: relay, onReady: onReady)
-    }
-
     private func currentCaptureID(for device: CaptureDevice, adbPath: String) async throws -> String {
         let result = await Proc.run(adbPath, ["devices", "-l"], timeout: 8)
         guard result.status == 0 else {
