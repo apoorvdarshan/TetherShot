@@ -49,6 +49,26 @@ final class AndroidCaptureTests: XCTestCase {
         XCTAssertEqual(devices[0].connection, .androidWireless)
     }
 
+    func testResolvesChangedBonjourConflictSuffixForSameWirelessDevice() {
+        let requested = "adb-10BE6L202X000AZ-v1VF8w (2)._adb-tls-connect._tcp"
+        let current = "adb-10BE6L202X000AZ-v1VF8w (3)._adb-tls-connect._tcp"
+        let candidates = [CaptureDevice(
+            id: current,
+            captureID: current,
+            name: "I2302",
+            connection: .androidWireless
+        )]
+
+        XCTAssertEqual(
+            AndroidDeviceParser.preferredSerial(requested: requested, candidates: candidates),
+            current
+        )
+        XCTAssertEqual(
+            AndroidDeviceParser.stableSerial(requested),
+            "adb-10BE6L202X000AZ-v1VF8w._adb-tls-connect._tcp"
+        )
+    }
+
     func testAnnexBParserDeliversCompleteNALUnitsAcrossChunks() {
         var parser = AnnexBNALParser()
 

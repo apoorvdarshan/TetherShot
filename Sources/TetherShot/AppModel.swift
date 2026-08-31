@@ -175,6 +175,7 @@ final class AppModel: ObservableObject {
     func setPreviewWindowVisible(_ visible: Bool) {
         guard previewWindowVisible != visible else { return }
         previewWindowVisible = visible
+        if visible { refreshDevices() }
         synchronizeLivePreviewTasks()
     }
 
@@ -287,13 +288,13 @@ final class AppModel: ObservableObject {
         // `screenrecord` can wait for screen activity before completing the first
         // video NAL unit. Seed every new stream with a fresh frame so a preview
         // resumed after being hidden never displays its cached, pre-pause image.
-        if let initialFrame = try? await android.capture(deviceID: device.captureID),
+        if let initialFrame = try? await android.capture(device: device),
            !Task.isCancelled {
             await state.update(png: initialFrame)
         }
         do {
             try await android.streamPreview(
-                deviceID: device.captureID,
+                device: device,
                 relay: state.videoRelay
             ) { [weak state] size in
                 Task { @MainActor in state?.markVideoLive(size: size) }
@@ -398,7 +399,7 @@ final class AppModel: ObservableObject {
                 case .wireless:
                     png = try await wireless.capture(deviceID: device.captureID)
                 case .androidUSB, .androidWireless:
-                    png = try await android.capture(deviceID: device.captureID)
+                    png = try await android.capture(device: device)
                 }
             }
             try save(png: png, device: device)

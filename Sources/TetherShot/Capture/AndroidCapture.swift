@@ -52,10 +52,21 @@ final class AndroidCapture: CaptureBackend {
     }
 
     func capture(deviceID: String) async throws -> Data {
+        let device = CaptureDevice(
+            id: DeviceIdentity.android(androidID: nil, adbSerial: deviceID),
+            captureID: deviceID,
+            name: "Android",
+            connection: AndroidDeviceParser.isWireless(serial: deviceID) ? .androidWireless : .androidUSB
+        )
+        return try await capture(device: device)
+    }
+
+    func capture(device: CaptureDevice) async throws -> Data {
         guard let adb = Self.adbPath else {
             throw CaptureError.other("Android platform tools are not installed.")
         }
 
+        let deviceID = try await currentCaptureID(for: device, adbPath: adb)
         Log.shared.log("android: direct screencap \(deviceID)")
         let shot = await Proc.runData(
             adb,
@@ -73,17 +84,75 @@ final class AndroidCapture: CaptureBackend {
         relay: VideoSampleBufferRelay,
         onReady: @escaping @Sendable (CGSize) -> Void
     ) async throws {
+        let device = CaptureDevice(
+            id: DeviceIdentity.android(androidID: nil, adbSerial: deviceID),
+            captureID: deviceID,
+            name: "Android",
+            connection: AndroidDeviceParser.isWireless(serial: deviceID) ? .androidWireless : .androidUSB
+        )
+        try await streamPreview(device: device, relay: relay, onReady: onReady)
+    }
+
+    func streamPreview(
+        device: CaptureDevice,
+        relay: VideoSampleBufferRelay,
+        onReady: @escaping @Sendable (CGSize) -> Void
+    ) async throws {
         guard let adb = Self.adbPath else {
             throw CaptureError.other("Android platform tools are not installed.")
         }
+        let deviceID = try await currentCaptureID(for: device, adbPath: adb)
         let stream = AndroidH264PreviewStream(adbPath: adb, deviceID: deviceID)
         try await stream.run(relay: relay, onReady: onReady)
+    }
+
+    private func currentCaptureID(for device: CaptureDevice, adbPath: String) async throws -> String {
+        let result = await Proc.run(adbPath, ["devices", "-l"], timeout: 8)
+        guard result.status == 0 else {
+            throw CaptureError.other(Self.message(
+                from: result.stderr,
+                fallback: "Could not query connected Android devices."
+            ))
+        }
+
+        let candidates = AndroidDeviceParser.parse(result.stdout)
+        if let serial = AndroidDeviceParser.preferredSerial(
+            requested: device.captureID,
+            candidates: candidates
+        ) {
+            return serial
+        }
+
+        // The mDNS service instance can change beyond its Bonjour conflict
+        // suffix. Fall back to Android's persistent hardware identity so a
+        // renamed/re-advertised phone resumes without becoming a new device.
+        if device.id.hasPrefix("android:") {
+            for candidate in candidates {
+                let identity = await Proc.run(
+                    adbPath,
+                    ["-s", candidate.captureID, "shell", "settings", "get", "secure", "android_id"],
+                    timeout: 5
+                )
+                guard identity.status == 0 else { continue }
+                if DeviceIdentity.android(
+                    androidID: identity.stdout,
+                    adbSerial: candidate.captureID
+                ) == device.id {
+                    return candidate.captureID
+                }
+            }
+        }
+
+        throw CaptureError.other("Android device disconnected. Reconnect USB or Wi-Fi; TetherShot will retry.")
     }
 
     private static func message(from text: String, fallback: String) -> String {
         let line = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? fallback
         if line.localizedCaseInsensitiveContains("unauthorized") {
             return "Unlock the Android phone and allow USB debugging."
+        }
+        if line.localizedCaseInsensitiveContains("not found") {
+            return "Android device disconnected. Reconnect USB or Wi-Fi; TetherShot will retry."
         }
         return line
     }
@@ -123,7 +192,25 @@ enum AndroidDeviceParser {
         }
     }
 
-    private static func isWireless(serial: String) -> Bool {
+    static func preferredSerial(
+        requested: String,
+        candidates: [CaptureDevice]
+    ) -> String? {
+        if candidates.contains(where: { $0.captureID == requested }) { return requested }
+        let stableRequested = stableSerial(requested)
+        let matches = candidates.filter { stableSerial($0.captureID) == stableRequested }
+        return matches.count == 1 ? matches[0].captureID : nil
+    }
+
+    static func stableSerial(_ serial: String) -> String {
+        serial.replacingOccurrences(
+            of: #"\s+\(\d+\)(?=\._adb-tls-connect\._tcp$)"#,
+            with: "",
+            options: .regularExpression
+        )
+    }
+
+    static func isWireless(serial: String) -> Bool {
         serial.contains(":") || serial.localizedCaseInsensitiveContains("._adb-tls-connect._tcp")
     }
 
