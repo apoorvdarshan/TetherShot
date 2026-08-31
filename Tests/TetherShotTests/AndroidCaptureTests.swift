@@ -33,6 +33,22 @@ final class AndroidCaptureTests: XCTestCase {
         XCTAssertFalse(AndroidDeviceParser.isEmulator(kernelQEMU: "\n", bootQEMU: "0\n"))
     }
 
+    func testParsesWirelessADBSerialWithBonjourConflictSuffix() {
+        let serial = "adb-10BE6L202X000AZ-v1VF8w (2)._adb-tls-connect._tcp"
+        let output = """
+        List of devices attached
+        \(serial) device product:I2302T model:I2302 device:I2302 transport_id:1
+
+        """
+
+        let devices = AndroidDeviceParser.parse(output)
+
+        XCTAssertEqual(devices.count, 1)
+        XCTAssertEqual(devices[0].captureID, serial)
+        XCTAssertEqual(devices[0].name, "I2302")
+        XCTAssertEqual(devices[0].connection, .androidWireless)
+    }
+
     func testAnnexBParserDeliversCompleteNALUnitsAcrossChunks() {
         var parser = AnnexBNALParser()
 

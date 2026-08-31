@@ -96,8 +96,14 @@ enum AndroidDeviceParser {
             .dropFirst()
             .compactMap { line -> CaptureDevice? in
                 let fields = line.split(whereSeparator: \.isWhitespace).map(String.init)
-                guard fields.count >= 2, fields[1] == "device" else { return nil }
-                let serial = fields[0]
+                // Wireless ADB service-instance names can contain a Bonjour
+                // conflict suffix such as "(2)". Treat every field before the
+                // connection-state token as the serial instead of assuming the
+                // state is always the second field.
+                guard let stateIndex = fields.firstIndex(of: "device"), stateIndex > 0 else {
+                    return nil
+                }
+                let serial = fields[..<stateIndex].joined(separator: " ")
                 guard !isEmulator(serial: serial, fields: fields) else { return nil }
                 let model = fields
                     .first(where: { $0.hasPrefix("model:") })?
