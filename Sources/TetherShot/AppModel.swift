@@ -17,8 +17,8 @@ final class AppModel: ObservableObject {
     @Published var copyToClipboard = (UserDefaults.standard.object(forKey: "copyToClipboard") as? Bool) ?? true
     @Published var showInMenuBar: Bool
     @Published var showInDock: Bool
-    @Published var autoCheckForUpdates = (UserDefaults.standard.object(forKey: "autoCheckForUpdates") as? Bool) ?? true
-    @Published var autoInstallUpdates = (UserDefaults.standard.object(forKey: "autoInstallUpdates") as? Bool) ?? false
+    @Published var autoCheckForUpdates: Bool
+    @Published var autoInstallUpdates: Bool
     @Published var availableUpdate: String?
     @Published private(set) var quickCapturePreference = QuickCapturePreferenceStore.load()
     @Published private(set) var hiddenDevices = HiddenDevicePreferenceStore.load()
@@ -45,6 +45,8 @@ final class AppModel: ObservableObject {
         launchAtLogin = backgroundPreferences.launchAtLogin
         showInMenuBar = backgroundPreferences.showInMenuBar
         showInDock = backgroundPreferences.showInDock
+        autoCheckForUpdates = backgroundPreferences.autoCheckForUpdates
+        autoInstallUpdates = backgroundPreferences.autoInstallUpdates
 
         Notifier.requestAuthorization()
         registerHotKey()
@@ -320,14 +322,20 @@ final class AppModel: ObservableObject {
 
     func setAutoCheckForUpdates(_ enabled: Bool) {
         autoCheckForUpdates = enabled
-        UserDefaults.standard.set(enabled, forKey: "autoCheckForUpdates")
+        UserDefaults.standard.set(
+            enabled,
+            forKey: BackgroundPreferenceStore.autoCheckForUpdatesKey
+        )
     }
 
     /// When on, the app silently installs a newer version and relaunches as soon
     /// as one is found (implies checking).
     func setAutoInstallUpdates(_ enabled: Bool) {
         autoInstallUpdates = enabled
-        UserDefaults.standard.set(enabled, forKey: "autoInstallUpdates")
+        UserDefaults.standard.set(
+            enabled,
+            forKey: BackgroundPreferenceStore.autoInstallUpdatesKey
+        )
         if enabled { checkForUpdates(manual: false) }
     }
 

@@ -4,6 +4,8 @@ struct BackgroundPreferenceState: Equatable {
     let showInMenuBar: Bool
     let showInDock: Bool
     let launchAtLogin: Bool
+    let autoCheckForUpdates: Bool
+    let autoInstallUpdates: Bool
 }
 
 /// Establishes background-behavior defaults once without overwriting choices
@@ -12,6 +14,8 @@ enum BackgroundPreferenceStore {
     static let showInMenuBarKey = "showInMenuBar"
     static let showInDockKey = "showInDock"
     static let launchAtLoginKey = "launchAtLogin"
+    static let autoCheckForUpdatesKey = "autoCheckForUpdates"
+    static let autoInstallUpdatesKey = "autoInstallUpdates"
 
     private static let defaultsInitializedKey = "backgroundDefaultsInitializedV1"
     private static let existingInstallEvidenceKeys = [
@@ -19,8 +23,8 @@ enum BackgroundPreferenceStore {
         "copyToClipboard",
         showInMenuBarKey,
         showInDockKey,
-        "autoCheckForUpdates",
-        "autoInstallUpdates",
+        autoCheckForUpdatesKey,
+        autoInstallUpdatesKey,
         "destinationFolderBookmark",
         "quickCaptureDeviceID",
         "quickCaptureDeviceName",
@@ -39,13 +43,23 @@ enum BackgroundPreferenceStore {
         let isNewUser = !wasInitialized && !hasExistingPreferences
 
         let showInMenuBar = (defaults.object(forKey: showInMenuBarKey) as? Bool) ?? true
-        let showInDock = (defaults.object(forKey: showInDockKey) as? Bool) ?? true
+        let showInDock = (defaults.object(forKey: showInDockKey) as? Bool) ?? !isNewUser
+        let autoCheckForUpdates =
+            (defaults.object(forKey: autoCheckForUpdatesKey) as? Bool) ?? true
+        let autoInstallUpdates =
+            (defaults.object(forKey: autoInstallUpdatesKey) as? Bool) ?? isNewUser
 
         if defaults.object(forKey: showInMenuBarKey) == nil {
             defaults.set(showInMenuBar, forKey: showInMenuBarKey)
         }
         if defaults.object(forKey: showInDockKey) == nil {
             defaults.set(showInDock, forKey: showInDockKey)
+        }
+        if defaults.object(forKey: autoCheckForUpdatesKey) == nil {
+            defaults.set(autoCheckForUpdates, forKey: autoCheckForUpdatesKey)
+        }
+        if defaults.object(forKey: autoInstallUpdatesKey) == nil {
+            defaults.set(autoInstallUpdates, forKey: autoInstallUpdatesKey)
         }
 
         let launchAtLogin = isNewUser
@@ -58,7 +72,9 @@ enum BackgroundPreferenceStore {
         return BackgroundPreferenceState(
             showInMenuBar: showInMenuBar,
             showInDock: showInDock,
-            launchAtLogin: launchAtLogin
+            launchAtLogin: launchAtLogin,
+            autoCheckForUpdates: autoCheckForUpdates,
+            autoInstallUpdates: autoInstallUpdates
         )
     }
 
