@@ -104,7 +104,6 @@ struct MenuContent: View {
         Button("View Source on GitHub") { open(ProjectLinks.repository) }
         Button("Report an Issue…") { open(ProjectLinks.issues) }
         Button("MIT License") { open(ProjectLinks.license) }
-        Button("Vote on Product Hunt") { open(ProjectLinks.productHunt) }
         Button("Support on Ko-fi") { open(ProjectLinks.koFi) }
         Button("Follow @apoorvdarshan on X") { open(ProjectLinks.x) }
 
