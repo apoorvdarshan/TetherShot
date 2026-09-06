@@ -32,7 +32,11 @@ render "$ROOT/01-overview.html" "$ROOT/01-overview.png"
 render "$ROOT/02-native-app.html" "$ROOT/02-native-app.png"
 render "$ROOT/03-local-first.html" "$ROOT/03-local-first.png"
 
-magick "$ROOT/app-icon.png" -resize 240x240^ -gravity center -extent 240x240 "$ROOT/thumbnail-240.png"
+magick "$ROOT/app-icon.png" \
+  \( -size 1024x1024 xc:none -fill white -draw "roundrectangle 0,0 1023,1023 224,224" \) \
+  -alpha off -compose CopyOpacity -composite \
+  -resize 240x240 \
+  PNG32:"$ROOT/thumbnail-240.png"
 
 echo "Rendered:"
 ls -la "$ROOT"/*.png

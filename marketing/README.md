@@ -1,6 +1,8 @@
 # TetherShot marketing assets
 
 - `app-icon.png` — clean application icon.
+- `app-icon-transparent.png` — app icon with transparent rounded corners (1024×1024).
+- `logo-transparent-512.png` — transparent logo at 512×512.
 - `app-screenshot.png` — native app window (legacy).
 - `product-hunt/01-overview.png` — primary 1270×760 launch gallery image.
 - `product-hunt/02-native-app.png` — dashboard launch gallery image.
