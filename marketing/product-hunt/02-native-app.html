@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8" />
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .window-mock {
+    width: 100%;
+    height: 100%;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #1e1e1e;
+    color: #f5f5f7;
+    font-size: 11px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.45);
+  }
+  .titlebar {
+    height: 28px;
+    background: linear-gradient(#3a3a3a,#2d2d2d);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 7px;
+    border-bottom: 1px solid #111;
+  }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; }
+  .dot.y { background: #febc2e; }
+  .dot.g { background: #28c840; }
+  .titlebar span { margin-left: 8px; color: #bbb; font-size: 12px; }
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: rgba(255,255,255,.04);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .header img { width: 40px; height: 40px; border-radius: 9px; }
+  .header h2 { margin: 0; font-size: 18px; font-weight: 700; }
+  .header p { margin: 2px 0 0; color: #9a9aa2; font-size: 11px; }
+  .pill-status {
+    margin-left: auto;
+    background: rgba(140,82,255,.15);
+    color: #b98cff;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .panel { margin: 10px 14px; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; overflow: hidden; background: #252525; }
+  .panel-head { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 11px; font-weight: 700; }
+  .panel-head small { color: #888; font-weight: 500; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.05); }
+  .row:last-child { border-bottom: 0; }
+  .icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: rgba(140,82,255,.12); color: #8c52ff;
+    display: grid; place-items: center; font-size: 13px;
+  }
+  .row strong { display: block; font-size: 12px; }
+  .row span { color: #888; font-size: 10px; }
+  .btn {
+    margin-left: auto;
+    background: linear-gradient(#8c52ff,#6b3fd4);
+    color: white; border: 0; border-radius: 6px;
+    padding: 5px 10px; font-size: 10px; font-weight: 600;
+  }
+  .footer {
+    padding: 10px 14px;
+    border-top: 1px solid rgba(255,255,255,.08);
+    color: #777;
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    background: rgba(255,255,255,.03);
+  }
+</style>
+<body>
+<section class="card app">
+  <div class="brand"><img src="app-icon.png" alt="" />TetherShot</div>
+  <div class="copy">
+    <div class="eyebrow">A proper Mac utility</div>
+    <h1>One dashboard.<br />Always ready.</h1>
+    <p>Capture, storage, connections, updates, and background controls — without sidebar navigation.</p>
+  </div>
+  <div class="art">
+    <div class="window-mock">
+      <div class="titlebar">
+        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+        <span>TetherShot</span>
+      </div>
+      <div class="header">
+        <img src="app-icon.png" alt="" />
+        <div>
+          <h2>TetherShot</h2>
+          <p>iPhone and Android screenshots from your Mac</p>
+        </div>
+        <div class="pill-status">2 ready</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">Capture <small>USB and Wi-Fi devices</small></div>
+        <div class="row">
+          <div class="icon">📶</div>
+          <div><strong>Apoorv's iPhone</strong><span>USB + Wi-Fi</span></div>
+          <button class="btn">Capture</button>
+        </div>
+        <div class="row">
+          <div class="icon">📶</div>
+          <div><strong>I2302</strong><span>Android Wi-Fi</span></div>
+          <button class="btn">Capture</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">Connections <small>iPhone and Android</small></div>
+        <div class="row"><div class="icon">✓</div><div><strong>iPhone Wi-Fi</strong><span>Developer-services tunnel ready</span></div></div>
+        <div class="row"><div class="icon">✓</div><div><strong>Android (ADB)</strong><span>Platform tools found</span></div></div>
+      </div>
+      <div class="footer"><span>Ready — close window to keep capturing in background</span><span>TetherShot 1.0.16</span></div>
+    </div>
+  </div>
+  <div class="foot">MENU BAR · ⌘⇧7 HOTKEY · LAUNCH AT LOGIN</div>
+</section>
+</body>
+</html>
