@@ -336,6 +336,8 @@ private struct ProjectDashboardSection: View {
                 ProjectLinkRow(icon: "doc.text", title: "MIT license", detail: "Read the open-source license", url: ProjectLinks.license)
                 Divider().padding(.leading, 48)
                 ProjectLinkRow(icon: "heart", title: "Support on Ko-fi", detail: "Sponsor development", url: ProjectLinks.koFi)
+                Divider().padding(.leading, 48)
+                ProjectLinkRow(icon: "arrow.up.circle", title: "Upvote on Product Hunt", detail: "Support the launch and leave feedback", url: ProjectLinks.productHunt)
             }
         }
     }

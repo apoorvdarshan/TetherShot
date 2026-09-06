@@ -17,6 +17,7 @@
   <img src="https://img.shields.io/npm/v/tethershot?logo=npm&label=npm&color=CB3837" alt="npm version" />
   <img src="https://img.shields.io/github/stars/apoorvdarshan/TetherShot?logo=github&color=FFCA28" alt="GitHub stars" />
   <img src="https://img.shields.io/badge/license-MIT-3DA639" alt="MIT License" />
+  <a href="https://www.producthunt.com/products/tethershot-2/"><img src="https://img.shields.io/badge/Product_Hunt-Upvote-DA552F?logo=producthunt&logoColor=white" alt="Upvote on Product Hunt" /></a>
 </p>
 
 <p>
@@ -184,6 +185,7 @@ Found a vulnerability? Please report it privately — see **[SECURITY.md](SECURI
 
 If TetherShot is useful to you:
 
+- 🚀 **[Upvote on Product Hunt](https://www.producthunt.com/products/tethershot-2/)**
 - ⭐ **Star** the repo
 - ☕ **[Support on Ko-fi](https://ko-fi.com/apoorvdarshan)**
 - 🐦 **Follow [@apoorvdarshan](https://x.com/apoorvdarshan)** on X
