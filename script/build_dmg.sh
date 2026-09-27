@@ -27,10 +27,20 @@ cp Resources/Info.plist "$CONTENTS/Info.plist"
 cp \
   scripts/install-tunneld.sh \
   scripts/uninstall-tunneld.sh \
+  scripts/wireless-screenshot.py \
   "$CONTENTS/Resources/"
 chmod +x \
   "$CONTENTS/MacOS/TetherShot" \
-  "$CONTENTS/Resources/"*.sh
+  "$CONTENTS/Resources/"*.sh \
+  "$CONTENTS/Resources/"*.py
+
+# Fast Wi-Fi capture depends on this bundled helper. Without it the app still
+# works through the slower CLI fallback, so fail here rather than shipping a
+# silent regression.
+[[ -x "$CONTENTS/Resources/wireless-screenshot.py" ]] || {
+  echo "error: packaged app is missing the Wi-Fi screenshot helper" >&2
+  exit 1
+}
 
 ICON_TMP="$(mktemp -d)/AppIcon.iconset"
 mkdir -p "$ICON_TMP"

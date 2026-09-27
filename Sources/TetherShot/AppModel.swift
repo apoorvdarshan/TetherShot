@@ -102,7 +102,7 @@ final class AppModel: ObservableObject {
     }
 
     private func merged(with usbDevices: [CaptureDevice]) async -> [CaptureDevice] {
-        async let wirelessDevices = wireless.discoverDevicesAsync()
+        async let wirelessDevices = wireless.discoverDevicesAsync(refreshNames: false)
         async let androidDevices = android.discoverDevicesAsync()
         return usbDevices + (await wirelessDevices) + (await androidDevices)
     }
@@ -113,6 +113,9 @@ final class AppModel: ObservableObject {
         refreshHiddenDeviceNames(from: merged)
         devices = CaptureDeviceVisibility.visibleDevices(from: merged, hidden: hiddenDevices)
         migrateQuickCapturePreferenceIfNeeded()
+        for device in devices where device.connection == .wireless {
+            wireless.prewarm(deviceID: device.captureID)
+        }
     }
 
     private func refreshHiddenDeviceNames(from devices: [CaptureDevice]) {

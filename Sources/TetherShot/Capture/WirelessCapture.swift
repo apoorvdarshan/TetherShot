@@ -7,7 +7,8 @@ import Foundation
 /// scripts/install-tunneld.sh) that keeps RemoteXPC tunnels alive and exposes
 /// them on a local HTTP API. This backend just:
 ///   1. asks tunneld which devices are reachable (and over which transport), and
-///   2. runs `developer dvt screenshot OUT --tunnel <UDID>` to grab a frame.
+///   2. asks the long-lived scripts/wireless-screenshot.py helper for a frame,
+///      falling back to `developer dvt screenshot OUT --tunnel <UDID>`.
 ///
 /// Because tunneld holds the tunnel, the capture command runs as a normal user
 /// with no sudo — and works whether the phone is on USB or pure Wi-Fi.
@@ -25,6 +26,34 @@ final class WirelessCapture: CaptureBackend {
             "\(NSHomeDirectory())/.local/bin/pymobiledevice3",
         ]
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
+    }()
+
+    /// The interpreter pymobiledevice3 was installed into, read from the
+    /// console script's shebang, so the helper can import the same package.
+    private static let pythonPath: String? = {
+        guard let pmd3Path,
+              let handle = FileHandle(forReadingAtPath: pmd3Path),
+              let line = String(data: handle.readData(ofLength: 256), encoding: .utf8)?
+                .split(whereSeparator: \.isNewline).first,
+              line.hasPrefix("#!") else { return nil }
+        let path = String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+        return FileManager.default.isExecutableFile(atPath: path) ? path : nil
+    }()
+
+    private static var screenshotHelperPath: String? {
+        if let bundled = Bundle.main.url(forResource: "wireless-screenshot", withExtension: "py")?.path {
+            return bundled
+        }
+        let sourcePath = FileManager.default.currentDirectoryPath + "/scripts/wireless-screenshot.py"
+        return FileManager.default.fileExists(atPath: sourcePath) ? sourcePath : nil
+    }
+
+    /// nil when the helper or its interpreter is missing; captures then use
+    /// the one-shot CLI only.
+    private let session: WirelessScreenshotSession? = {
+        guard let python = WirelessCapture.pythonPath,
+              let helper = WirelessCapture.screenshotHelperPath else { return nil }
+        return WirelessScreenshotSession(pythonPath: python, helperPath: helper)
     }()
 
     private let nameCacheLock = NSLock()
@@ -59,9 +88,14 @@ final class WirelessCapture: CaptureBackend {
 
     /// Surfaces every tunneled iPhone. AppModel merges matching hardware IDs,
     /// advertises both transports, and prefers native USB capture when present.
-    func discoverDevicesAsync() async -> [CaptureDevice] {
+    ///
+    /// With `refreshNames` false (the hotkey path), cached names are reused and
+    /// `usbmux list`, a separate Python process, only runs for unknown UDIDs.
+    func discoverDevicesAsync(refreshNames: Bool = true) async -> [CaptureDevice] {
         guard let tunnels = await tunneldDevices() else { return [] }
-        let names = await deviceNames()
+        let cached = cachedNames()
+        let needsLookup = refreshNames || tunnels.keys.contains { cached[$0] == nil }
+        let names = needsLookup ? await deviceNames() : cached
         var devices: [CaptureDevice] = []
         for (udid, interfaces) in tunnels where !interfaces.isEmpty {
             let name = names[udid] ?? "iPhone …\(udid.suffix(5))"
@@ -100,7 +134,25 @@ final class WirelessCapture: CaptureBackend {
         nameCacheLock.withLock { nameCache }
     }
 
+    /// Opens the helper's connection so the next capture skips setup.
+    func prewarm(deviceID: String) {
+        session?.warm(deviceID: deviceID)
+    }
+
     func capture(deviceID: String) async throws -> Data {
+        if let session {
+            do {
+                let png = try await session.capture(deviceID: deviceID)
+                Log.shared.log("wireless: helper screenshot \(deviceID)")
+                return png
+            } catch {
+                Log.shared.log("wireless: helper failed (\(error.localizedDescription)), using CLI")
+            }
+        }
+        return try await captureWithCLI(deviceID: deviceID)
+    }
+
+    private func captureWithCLI(deviceID: String) async throws -> Data {
         guard let pmd3 = Self.pmd3Path else {
             throw CaptureError.other("pymobiledevice3 not found — run scripts/install-tunneld.sh.")
         }
