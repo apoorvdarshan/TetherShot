@@ -102,17 +102,30 @@ final class AppModel: ObservableObject {
     }
 
     private func merged(with usbDevices: [CaptureDevice]) async -> [CaptureDevice] {
-        async let wirelessDevices = wireless.discoverDevicesAsync()
+        async let wirelessDevices = wireless.discoverDevicesAsync(refreshNames: false)
         async let androidDevices = android.discoverDevicesAsync()
         return usbDevices + (await wirelessDevices) + (await androidDevices)
     }
 
     private func applyDiscoveredDevices(_ discovered: [CaptureDevice]) {
         let merged = CaptureDeviceMerger.merge(discovered)
+        let previousWireless = Set(
+            discoveredDevices.filter { $0.connection == .wireless }.map(\.captureID)
+        )
         discoveredDevices = merged
         refreshHiddenDeviceNames(from: merged)
         devices = CaptureDeviceVisibility.visibleDevices(from: merged, hidden: hiddenDevices)
         migrateQuickCapturePreferenceIfNeeded()
+
+        // Warm connections for phones that just appeared, and release the ones
+        // that went away. Warming on every pass would put work in front of the
+        // capture the hotkey is waiting on.
+        let currentWireless = Set(devices.filter { $0.connection == .wireless }.map(\.captureID))
+        for device in devices where device.connection == .wireless
+            && !previousWireless.contains(device.captureID) {
+            wireless.prewarm(deviceID: device.captureID)
+        }
+        wireless.forget(deviceIDs: previousWireless.subtracting(currentWireless))
     }
 
     private func refreshHiddenDeviceNames(from devices: [CaptureDevice]) {

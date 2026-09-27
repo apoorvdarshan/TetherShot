@@ -7,7 +7,8 @@ import Foundation
 /// scripts/install-tunneld.sh) that keeps RemoteXPC tunnels alive and exposes
 /// them on a local HTTP API. This backend just:
 ///   1. asks tunneld which devices are reachable (and over which transport), and
-///   2. runs `developer dvt screenshot OUT --tunnel <UDID>` to grab a frame.
+///   2. asks the long-lived scripts/wireless-screenshot.py helper for a frame,
+///      falling back to `developer dvt screenshot OUT --tunnel <UDID>`.
 ///
 /// Because tunneld holds the tunnel, the capture command runs as a normal user
 /// with no sudo — and works whether the phone is on USB or pure Wi-Fi.
@@ -27,8 +28,70 @@ final class WirelessCapture: CaptureBackend {
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
     }()
 
+    /// The interpreter pymobiledevice3 was installed into. Console scripts
+    /// usually point straight at the venv python, but some (including pipx and
+    /// `usr/bin/env`) use an indirection, so resolve those too. Returns nil
+    /// when no usable interpreter is found; the caller then logs why and falls
+    /// back to the one-shot CLI.
+    private static let pythonPath: String? = {
+        guard let pmd3Path,
+              let handle = FileHandle(forReadingAtPath: pmd3Path),
+              // A PATH-based shebang line can be long; read generously.
+              let text = String(data: handle.readData(ofLength: 1024), encoding: .utf8),
+              let line = text.split(whereSeparator: \.isNewline).first,
+              line.hasPrefix("#!") else { return nil }
+        let parts = line.dropFirst(2)
+            .split(whereSeparator: { $0 == " " || $0 == "\t" })
+            .map(String.init)
+        guard let command = parts.first, !command.isEmpty else { return nil }
+        let resolved = FileManager.default.isExecutableFile(atPath: command)
+            ? command
+            : lookupInPATH(command)
+        guard let resolved, FileManager.default.isExecutableFile(atPath: resolved) else { return nil }
+        return resolved
+    }()
+
+    /// Resolves a bare interpreter name against PATH, since Finder-launched
+    /// apps inherit a minimal environment.
+    private static func lookupInPATH(_ name: String) -> String? {
+        let dirs = [
+            "/opt/homebrew/bin",
+            "/usr/local/bin",
+            "/usr/bin",
+            "\(NSHomeDirectory())/.local/bin",
+        ]
+        return dirs.lazy.map { "\($0)/\(name)" }
+            .first { FileManager.default.isExecutableFile(atPath: $0) }
+    }
+
+    private static var screenshotHelperPath: String? {
+        if let bundled = Bundle.main.url(forResource: "wireless-screenshot", withExtension: "py")?.path {
+            return bundled
+        }
+        let sourcePath = FileManager.default.currentDirectoryPath + "/scripts/wireless-screenshot.py"
+        return FileManager.default.fileExists(atPath: sourcePath) ? sourcePath : nil
+    }
+
+    /// nil when the helper or its interpreter is missing; captures then use
+    /// the one-shot CLI only.
+    private let session: WirelessScreenshotSession? = {
+        guard let python = WirelessCapture.pythonPath else {
+            Log.shared.log("wireless helper: no python interpreter found; using CLI capture")
+            return nil
+        }
+        guard let helper = WirelessCapture.screenshotHelperPath else {
+            Log.shared.log("wireless helper: script not found; using CLI capture")
+            return nil
+        }
+        return WirelessScreenshotSession(pythonPath: python, helperPath: helper)
+    }()
+
     private let nameCacheLock = NSLock()
     private var nameCache: [String: String] = [:]
+    private let nameRefreshLock = NSLock()
+    private var lastNameRefresh = Date.distantPast
+    private let warmLock = NSLock()
+    private var warmedDeviceIDs: Set<String> = []
 
     /// True when the tunneld daemon answers — i.e. wireless setup is in place.
     func isTunneldRunning() async -> Bool {
@@ -59,9 +122,22 @@ final class WirelessCapture: CaptureBackend {
 
     /// Surfaces every tunneled iPhone. AppModel merges matching hardware IDs,
     /// advertises both transports, and prefers native USB capture when present.
-    func discoverDevicesAsync() async -> [CaptureDevice] {
+    ///
+    /// With `refreshNames` false (the hotkey path), cached names are reused and
+    /// `usbmux list`, a separate Python process, only runs for unknown UDIDs.
+    /// Known UDIDs are still refreshed in the background so a phone renamed
+    /// while the app runs doesn't keep showing its old name.
+    func discoverDevicesAsync(refreshNames: Bool = true) async -> [CaptureDevice] {
         guard let tunnels = await tunneldDevices() else { return [] }
-        let names = await deviceNames()
+        let cached = cachedNames()
+        let needsLookup = refreshNames || tunnels.keys.contains { cached[$0] == nil }
+        let names: [String: String]
+        if needsLookup {
+            names = await deviceNames()
+        } else {
+            names = cached
+            scheduleNameRefresh()
+        }
         var devices: [CaptureDevice] = []
         for (udid, interfaces) in tunnels where !interfaces.isEmpty {
             let name = names[udid] ?? "iPhone …\(udid.suffix(5))"
@@ -73,6 +149,21 @@ final class WirelessCapture: CaptureBackend {
             ))
         }
         return devices
+    }
+
+    /// Re-resolves device names off the capture path, at most once every few
+    /// seconds, so a rename shows up without slowing the hotkey down.
+    private func scheduleNameRefresh() {
+        let now = Date()
+        let shouldStart = nameRefreshLock.withLock {
+            guard now.timeIntervalSince(lastNameRefresh) > 5 else { return false }
+            lastNameRefresh = now
+            return true
+        }
+        guard shouldStart else { return }
+        Task.detached(priority: .utility) { [weak self] in
+            _ = await self?.deviceNames()
+        }
     }
 
     /// UDID -> friendly name, via `pymobiledevice3 usbmux list` (covers USB and
@@ -100,7 +191,44 @@ final class WirelessCapture: CaptureBackend {
         nameCacheLock.withLock { nameCache }
     }
 
+    /// Opens the helper's connection so the next capture skips setup.
+    ///
+    /// Only warms devices that just appeared: warming on every discovery pass
+    /// would queue work ahead of the capture the hotkey actually asked for.
+    func prewarm(deviceID: String) {
+        let shouldWarm = warmLock.withLock { warmedDeviceIDs.insert(deviceID).inserted }
+        guard shouldWarm else { return }
+        session?.warm(deviceID: deviceID)
+    }
+
+    /// Drops cached state for devices that are no longer visible, so a helper
+    /// connection isn't held for a phone that went away.
+    func forget(deviceIDs gone: Set<String>) {
+        guard !gone.isEmpty else { return }
+        let dropped = warmLock.withLock { () -> Set<String> in
+            let dropped = warmedDeviceIDs.intersection(gone)
+            warmedDeviceIDs.subtract(gone)
+            return dropped
+        }
+        for id in dropped {
+            session?.close(deviceID: id)
+        }
+    }
+
     func capture(deviceID: String) async throws -> Data {
+        if let session {
+            do {
+                let png = try await session.capture(deviceID: deviceID)
+                Log.shared.log("wireless: helper screenshot \(deviceID)")
+                return png
+            } catch {
+                Log.shared.log("wireless: helper failed (\(error.localizedDescription)), using CLI")
+            }
+        }
+        return try await captureWithCLI(deviceID: deviceID)
+    }
+
+    private func captureWithCLI(deviceID: String) async throws -> Data {
         guard let pmd3 = Self.pmd3Path else {
             throw CaptureError.other("pymobiledevice3 not found — run scripts/install-tunneld.sh.")
         }
