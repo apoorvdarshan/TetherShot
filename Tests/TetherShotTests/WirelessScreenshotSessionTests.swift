@@ -72,21 +72,81 @@ final class WirelessScreenshotSessionTests: XCTestCase {
         XCTAssertEqual(String(decoding: png, as: UTF8.self), "ok")
     }
 
-    func testCloseUsesTheSameFraming() async throws {
-        // A close must consume a reply like any other command, otherwise the
-        // next capture reads the close's reply as its own.
+    func testWarmIsSentOncePerDevice() async throws {
+        // Repeated discovery passes call warm again; the session should drop the
+        // duplicates instead of queueing more work ahead of a capture. The
+        // helper records each warm it sees.
+        let log = helperURL.appendingPathExtension("warm-log")
+        defer { try? FileManager.default.removeItem(at: log) }
         let session = try session(helper: """
         while read command udid; do
-          if [ "$command" = "close" ]; then
-            printf 'K\\000\\000\\000\\000'
+          if [ "$command" = "warm" ]; then
+            echo "$udid" >> '\(log.path)'
+          fi
+          printf 'K\\000\\000\\000\\000'
+        done
+        """)
+
+        session.warm(deviceID: "abc")
+        session.warm(deviceID: "abc")
+        session.warm(deviceID: "abc")
+        _ = try await session.capture(deviceID: "abc")
+
+        let seen = (try? String(contentsOf: log, encoding: .utf8))?
+            .split(whereSeparator: \.isNewline).count ?? 0
+        XCTAssertEqual(seen, 1, "warm should be sent once per device")
+    }
+
+    func testWarmIsRetriedAfterFailure() async throws {
+        // A warm that fails must clear its state, or the device would never be
+        // warmed again. The fake helper fails warm once, then records.
+        let marker = helperURL.appendingPathExtension("failed-once")
+        let log = helperURL.appendingPathExtension("warm-log")
+        defer {
+            try? FileManager.default.removeItem(at: marker)
+            try? FileManager.default.removeItem(at: log)
+        }
+        let session = try session(helper: """
+        while read command udid; do
+          if [ "$command" = "warm" ] && [ ! -e '\(marker.path)' ]; then
+            touch '\(marker.path)'
+            printf 'E\\000\\000\\000\\004boom'
           else
-            printf 'P\\000\\000\\000\\002ok'
+            if [ "$command" = "warm" ]; then echo "$udid" >> '\(log.path)'; fi
+            printf 'K\\000\\000\\000\\000'
           fi
         done
         """)
 
-        session.close(deviceID: "gone")
-        let png = try await session.capture(deviceID: "still-here")
-        XCTAssertEqual(String(decoding: png, as: UTF8.self), "ok")
+        session.warm(deviceID: "abc")
+        _ = try await session.capture(deviceID: "tick")   // flush the failed warm
+        session.warm(deviceID: "abc")
+        _ = try await session.capture(deviceID: "tick")
+
+        let seen = (try? String(contentsOf: log, encoding: .utf8))?
+            .split(whereSeparator: \.isNewline).count ?? 0
+        XCTAssertEqual(seen, 1, "a failed warm should be retried")
+    }
+
+    func testForgetAllowsRewarm() async throws {
+        // A device that goes away and returns must warm again.
+        let log = helperURL.appendingPathExtension("warm-log")
+        defer { try? FileManager.default.removeItem(at: log) }
+        let session = try session(helper: """
+        while read command udid; do
+          if [ "$command" = "warm" ]; then echo "$udid" >> '\(log.path)'; fi
+          printf 'K\\000\\000\\000\\000'
+        done
+        """)
+
+        session.warm(deviceID: "abc")
+        _ = try await session.capture(deviceID: "tick")
+        session.forget(deviceID: "abc")
+        session.warm(deviceID: "abc")
+        _ = try await session.capture(deviceID: "tick")
+
+        let seen = (try? String(contentsOf: log, encoding: .utf8))?
+            .split(whereSeparator: \.isNewline).count ?? 0
+        XCTAssertEqual(seen, 2, "a forgotten device should warm again")
     }
 }

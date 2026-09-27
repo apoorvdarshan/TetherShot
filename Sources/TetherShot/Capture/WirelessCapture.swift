@@ -30,9 +30,10 @@ final class WirelessCapture: CaptureBackend {
 
     /// The interpreter pymobiledevice3 was installed into. Console scripts
     /// usually point straight at the venv python, but some (including pipx and
-    /// `usr/bin/env`) use an indirection, so resolve those too. Returns nil
-    /// when no usable interpreter is found; the caller then logs why and falls
-    /// back to the one-shot CLI.
+    /// `usr/bin/env`) use an indirection, and pip writes a `#!/bin/sh` wrapper
+    /// when the python path has spaces or is too long for a shebang, so resolve
+    /// those too. Returns nil when no usable interpreter is found; the caller
+    /// then logs why and falls back to the one-shot CLI.
     private static let pythonPath: String? = {
         guard let pmd3Path,
               let handle = FileHandle(forReadingAtPath: pmd3Path),
@@ -44,12 +45,52 @@ final class WirelessCapture: CaptureBackend {
             .split(whereSeparator: { $0 == " " || $0 == "\t" })
             .map(String.init)
         guard let command = parts.first, !command.isEmpty else { return nil }
+        let base = (command as NSString).lastPathComponent
+        // pip's wrapper is a /bin/sh script that execs the real interpreter on
+        // its second line; parse that out instead of running sh with the Python
+        // helper as its script (which would exit without replying).
+        if base == "sh" || base == "bash" {
+            if let interpreter = wrapperInterpreter(in: text) { return interpreter }
+        }
         let resolved = FileManager.default.isExecutableFile(atPath: command)
             ? command
             : lookupInPATH(command)
         guard let resolved, FileManager.default.isExecutableFile(atPath: resolved) else { return nil }
         return resolved
     }()
+
+    /// Extracts the interpreter from pip's `#!/bin/sh` console-script wrapper,
+    /// e.g. `'''exec' "/opt/my venv/bin/python" "$0" "$@"`. Returns nil when the
+    /// file doesn't look like that wrapper. Visible to tests.
+    static func wrapperInterpreter(in text: String) -> String? {
+        guard let execLine = text.split(whereSeparator: \.isNewline)
+            .map(String.init)
+            .first(where: { $0.contains("exec") && $0.contains("python") }) else { return nil }
+        // The interpreter is the first quoted token after `exec`, which is how pip
+        // protects a path containing spaces. Only trust it if it looks like a
+        // python path — the later `"$0"`/`"$@"` quotes must not be mistaken for it.
+        if let openQuote = execLine.firstIndex(of: "\""),
+           let closeQuote = execLine[execLine.index(after: openQuote)...].firstIndex(of: "\"") {
+            let path = String(execLine[execLine.index(after: openQuote)..<closeQuote])
+            if isPythonPath(path), FileManager.default.isExecutableFile(atPath: path) {
+                return path
+            }
+        }
+        // Fall back to an unquoted python-looking token.
+        for raw in execLine.split(whereSeparator: { " \t'".contains($0) }) {
+            let candidate = String(raw)
+            if isPythonPath(candidate), FileManager.default.isExecutableFile(atPath: candidate) {
+                return candidate
+            }
+        }
+        return nil
+    }
+
+    /// Heuristic for a token that names a Python interpreter, not an argument
+    /// like `$0` or a shell name.
+    private static func isPythonPath(_ candidate: String) -> Bool {
+        candidate.contains("python")
+    }
 
     /// Resolves a bare interpreter name against PATH, since Finder-launched
     /// apps inherit a minimal environment.
@@ -90,8 +131,6 @@ final class WirelessCapture: CaptureBackend {
     private var nameCache: [String: String] = [:]
     private let nameRefreshLock = NSLock()
     private var lastNameRefresh = Date.distantPast
-    private let warmLock = NSLock()
-    private var warmedDeviceIDs: Set<String> = []
 
     /// True when the tunneld daemon answers — i.e. wireless setup is in place.
     func isTunneldRunning() async -> Bool {
@@ -193,25 +232,18 @@ final class WirelessCapture: CaptureBackend {
 
     /// Opens the helper's connection so the next capture skips setup.
     ///
-    /// Only warms devices that just appeared: warming on every discovery pass
-    /// would queue work ahead of the capture the hotkey actually asked for.
+    /// The session drops duplicates itself, so a repeated discovery pass is
+    /// cheap. AppModel still only calls this for phones that just appeared, so
+    /// it can't add latency ahead of a hotkey capture.
     func prewarm(deviceID: String) {
-        let shouldWarm = warmLock.withLock { warmedDeviceIDs.insert(deviceID).inserted }
-        guard shouldWarm else { return }
         session?.warm(deviceID: deviceID)
     }
 
-    /// Drops cached state for devices that are no longer visible, so a helper
-    /// connection isn't held for a phone that went away.
+    /// Clears warm state for devices that are no longer visible so a returning
+    /// phone warms again. Nothing is sent on the capture pipe.
     func forget(deviceIDs gone: Set<String>) {
-        guard !gone.isEmpty else { return }
-        let dropped = warmLock.withLock { () -> Set<String> in
-            let dropped = warmedDeviceIDs.intersection(gone)
-            warmedDeviceIDs.subtract(gone)
-            return dropped
-        }
-        for id in dropped {
-            session?.close(deviceID: id)
+        for id in gone {
+            session?.forget(deviceID: id)
         }
     }
 

@@ -109,9 +109,10 @@ final class AppModel: ObservableObject {
 
     private func applyDiscoveredDevices(_ discovered: [CaptureDevice]) {
         let merged = CaptureDeviceMerger.merge(discovered)
-        let previousWireless = Set(
-            discoveredDevices.filter { $0.connection == .wireless }.map(\.captureID)
-        )
+        // Compare against the phones that were visible before, not the full
+        // merged list: a phone that was hidden and is now restored counts as
+        // newly appeared and needs its connection warmed again.
+        let previousWireless = Set(devices.filter { $0.connection == .wireless }.map(\.captureID))
         discoveredDevices = merged
         refreshHiddenDeviceNames(from: merged)
         devices = CaptureDeviceVisibility.visibleDevices(from: merged, hidden: hiddenDevices)

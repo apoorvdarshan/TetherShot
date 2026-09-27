@@ -7,10 +7,13 @@ import Foundation
 ///
 /// Requests are serialized on one queue. Any failure tears the helper down so
 /// the next request starts a fresh one, and callers fall back to the CLI.
+///
+/// Cleanup is local-only: no `close` request is sent, so nothing can sit ahead
+/// of a capture. The helper reclaims its own sessions when a tunnel address
+/// changes and exits after being idle with no sessions.
 final class WirelessScreenshotSession: @unchecked Sendable {
-    /// The helper's own worst case (a reused capture that fails, a close, a
-    /// reconnect and a fresh capture) still fits under this, so the watchdog
-    /// only fires when the helper is genuinely stuck.
+    /// Covers a warm, which can include a reconnect, and a fresh capture. The
+    /// watchdog only fires when the helper is genuinely stuck.
     private static let requestTimeout: TimeInterval = 30
 
     private let pythonPath: String
@@ -20,27 +23,54 @@ final class WirelessScreenshotSession: @unchecked Sendable {
     private var input: FileHandle?
     private var output: FileHandle?
 
+    /// Device IDs with a warm in flight or already open. Guarded by `stateLock`
+    /// so a repeated discovery pass doesn't queue warm work that the helper has
+    /// already done — which would otherwise sit ahead of a capture.
+    private let stateLock = NSLock()
+    private var warmState: [String: Warm] = [:]
+
+    private enum Warm {
+        case inFlight
+        case open
+    }
+
     init(pythonPath: String, helperPath: String) {
         self.pythonPath = pythonPath
         self.helperPath = helperPath
     }
 
     /// Opens the connection ahead of time so the first capture is fast too.
+    ///
+    /// Duplicate requests for a device that is already warming or warm are
+    /// dropped; the entry is cleared again if the warm fails.
     func warm(deviceID: String) {
+        let shouldWarm = stateLock.withLock { () -> Bool in
+            guard warmState[deviceID] == nil else { return false }
+            warmState[deviceID] = .inFlight
+            return true
+        }
+        guard shouldWarm else { return }
         queue.async {
-            if case .failure(let error) = self.send("warm", deviceID, timeout: Self.requestTimeout) {
+            switch self.send("warm", deviceID, timeout: Self.requestTimeout) {
+            case .success:
+                self.stateLock.withLock { self.warmState[deviceID] = .open }
+            case .failure(let error):
                 Log.shared.log("wireless helper: warm failed \(error.localizedDescription)")
+                self.stateLock.withLock { self.warmState[deviceID] = nil }
             }
         }
     }
 
     /// Drops the helper's cached connection for a device that went away.
-    func close(deviceID: String) {
-        queue.async {
-            if case .failure(let error) = self.send("close", deviceID, timeout: Self.requestTimeout) {
-                Log.shared.log("wireless helper: close failed \(error.localizedDescription)")
-            }
-        }
+    ///
+    /// This is deliberately local-only: nothing is sent on the capture pipe, so
+    /// cleanup can never delay or interleave with a screenshot. The helper
+    /// already reclaims stale sessions on its own — it drops a session when the
+    /// device's tunnel address changes and exits after being idle with no
+    /// sessions — so the memory it holds is bounded without a `close` request.
+    /// Clearing the warm state makes a returning device warm again.
+    func forget(deviceID: String) {
+        stateLock.withLock { warmState[deviceID] = nil }
     }
 
     func capture(deviceID: String) async throws -> Data {
@@ -132,5 +162,7 @@ final class WirelessScreenshotSession: @unchecked Sendable {
         process = nil
         input = nil
         output = nil
+        // A fresh helper starts with no sessions, so nothing is warm any more.
+        stateLock.withLock { warmState.removeAll() }
     }
 }
