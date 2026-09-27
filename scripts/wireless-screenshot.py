@@ -15,9 +15,15 @@ Every request gets one reply on stdout: a kind byte, a big-endian UInt32
 payload length, then the payload. Kinds: b"P" PNG bytes, b"K" warm finished,
 b"E" UTF-8 error message.
 
-The helper exits when its stdin closes or when it has held no sessions for
-_EMPTY_EXIT_AFTER seconds, so a device that never comes back can't leave a
-python process resident forever.
+tunneld rebuilds Wi-Fi tunnels every few minutes, each on a new address. While
+no requests arrive, the helper checks tunneld every _IDLE_POLL seconds and
+reconnects any device whose tunnel moved, so the first capture after a quiet
+stretch doesn't pay for the reconnect.
+
+The helper exits when its stdin closes or when it has had no devices to keep
+warm for _EMPTY_EXIT_AFTER seconds. A device whose tunnel stays gone that long
+is forgotten, so one that never comes back can't leave a python process
+resident forever.
 """
 
 from __future__ import annotations
@@ -40,10 +46,12 @@ _CONNECT_TIMEOUT = 6
 _REUSED_CAPTURE_TIMEOUT = 3
 _FRESH_CAPTURE_TIMEOUT = 6
 _CLOSE_TIMEOUT = 1.5
-# How long to keep running with no open sessions before exiting. The client
+# How long to keep running with no devices to keep warm before exiting, and how
+# long a device's tunnel may stay missing before it is forgotten. The client
 # restarts the helper on the next request, so this only bounds idle residency.
 _EMPTY_EXIT_AFTER = 30
-# How often the read loop wakes up to check whether it should exit.
+# How often the read loop wakes up to follow moved tunnels and check whether
+# it should exit.
 _IDLE_POLL = 5
 
 
@@ -63,20 +71,65 @@ class Session:
             await asyncio.wait_for(self._stack.aclose(), 2)
 
 
-def tunnel_address(udid: str) -> tuple[str, int]:
+def list_tunnels() -> dict:
     with urllib.request.urlopen(_TUNNELD_URL, timeout=2) as response:
-        tunnels = json.load(response)
+        return json.load(response)
+
+
+def first_address(tunnels: dict, udid: str) -> tuple[str, int] | None:
     candidates = tunnels.get(udid) or []
     if not candidates:
-        raise RuntimeError("No tunnel to this device. Is it on the same Wi-Fi and is tunneld running?")
+        return None
     # Match `--tunnel UDID`, which uses the first tunnel tunneld reports.
     tunnel = candidates[0]
     return tunnel["tunnel-address"], int(tunnel["tunnel-port"])
 
 
+def tunnel_address(udid: str) -> tuple[str, int]:
+    address = first_address(list_tunnels(), udid)
+    if address is None:
+        raise RuntimeError("No tunnel to this device. Is it on the same Wi-Fi and is tunneld running?")
+    return address
+
+
 class Server:
     def __init__(self) -> None:
         self.sessions: dict[str, Session] = {}
+        # Devices the app asked about -> when their tunnel was last seen. These
+        # are kept warm in the background even while their session is closed.
+        self.wanted: dict[str, float] = {}
+
+    async def refresh(self) -> None:
+        """Reconnects wanted devices whose tunnel moved or whose session failed.
+
+        Runs only between requests. A device whose tunnel has been missing for
+        _EMPTY_EXIT_AFTER seconds is forgotten.
+        """
+        if not self.wanted:
+            return
+        try:
+            tunnels = await asyncio.to_thread(list_tunnels)
+        except Exception:
+            return
+        now = asyncio.get_running_loop().time()
+        for udid in list(self.wanted):
+            address = first_address(tunnels, udid)
+            if address is None:
+                # Tunnels briefly vanish while tunneld rebuilds them. Keep the
+                # device wanted through that gap and only give up after a while.
+                if now - self.wanted[udid] >= _EMPTY_EXIT_AFTER:
+                    del self.wanted[udid]
+                    await self.drop(udid)
+                continue
+            self.wanted[udid] = now
+            current = self.sessions.get(udid)
+            if current is not None and current.address == address:
+                continue
+            try:
+                await self.session(udid)
+                print(f"reconnected {udid} after its tunnel moved", file=sys.stderr, flush=True)
+            except Exception as error:
+                print(f"background reconnect to {udid} failed: {error}", file=sys.stderr, flush=True)
 
     async def session(self, udid: str) -> tuple[Session, bool]:
         """Returns the device's session and whether it was already open.
@@ -86,11 +139,13 @@ class Server:
         tunnel at all also drops any cached session, so disappeared phones
         don't leave connections resident.
         """
+        self.wanted.setdefault(udid, asyncio.get_running_loop().time())
         try:
             address = tunnel_address(udid)
         except Exception:
             await self.drop(udid)
             raise
+        self.wanted[udid] = asyncio.get_running_loop().time()
         current = self.sessions.get(udid)
         if current is not None and current.address == address:
             return current, True
@@ -143,7 +198,8 @@ async def serve(out) -> None:
         # instead of staying resident until the client drops it.
         line = await asyncio.to_thread(_read_line_or_timeout, _IDLE_POLL)
         if line is None:
-            if not server.sessions and (
+            await server.refresh()
+            if not server.wanted and (
                 asyncio.get_running_loop().time() - idle_since >= _EMPTY_EXIT_AFTER
             ):
                 break
@@ -159,6 +215,7 @@ async def serve(out) -> None:
             elif command == "shot":
                 reply(out, b"P", await server.capture(udid))
             elif command == "close":
+                server.wanted.pop(udid, None)
                 await server.drop(udid)
                 reply(out, b"K", b"")
             else:
