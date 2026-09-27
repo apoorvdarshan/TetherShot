@@ -71,4 +71,22 @@ final class WirelessScreenshotSessionTests: XCTestCase {
         let png = try await session.capture(deviceID: "a")
         XCTAssertEqual(String(decoding: png, as: UTF8.self), "ok")
     }
+
+    func testCloseUsesTheSameFraming() async throws {
+        // A close must consume a reply like any other command, otherwise the
+        // next capture reads the close's reply as its own.
+        let session = try session(helper: """
+        while read command udid; do
+          if [ "$command" = "close" ]; then
+            printf 'K\\000\\000\\000\\000'
+          else
+            printf 'P\\000\\000\\000\\002ok'
+          fi
+        done
+        """)
+
+        session.close(deviceID: "gone")
+        let png = try await session.capture(deviceID: "still-here")
+        XCTAssertEqual(String(decoding: png, as: UTF8.self), "ok")
+    }
 }

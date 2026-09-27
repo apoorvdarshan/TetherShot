@@ -8,6 +8,11 @@ import Foundation
 /// Requests are serialized on one queue. Any failure tears the helper down so
 /// the next request starts a fresh one, and callers fall back to the CLI.
 final class WirelessScreenshotSession: @unchecked Sendable {
+    /// The helper's own worst case (a reused capture that fails, a close, a
+    /// reconnect and a fresh capture) still fits under this, so the watchdog
+    /// only fires when the helper is genuinely stuck.
+    private static let requestTimeout: TimeInterval = 30
+
     private let pythonPath: String
     private let helperPath: String
     private let queue = DispatchQueue(label: "com.apoorvdarshan.tethershot.wireless-screenshot")
@@ -23,8 +28,17 @@ final class WirelessScreenshotSession: @unchecked Sendable {
     /// Opens the connection ahead of time so the first capture is fast too.
     func warm(deviceID: String) {
         queue.async {
-            if case .failure(let error) = self.send("warm", deviceID, timeout: 15) {
+            if case .failure(let error) = self.send("warm", deviceID, timeout: Self.requestTimeout) {
                 Log.shared.log("wireless helper: warm failed \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Drops the helper's cached connection for a device that went away.
+    func close(deviceID: String) {
+        queue.async {
+            if case .failure(let error) = self.send("close", deviceID, timeout: Self.requestTimeout) {
+                Log.shared.log("wireless helper: close failed \(error.localizedDescription)")
             }
         }
     }
@@ -32,7 +46,7 @@ final class WirelessScreenshotSession: @unchecked Sendable {
     func capture(deviceID: String) async throws -> Data {
         try await withCheckedThrowingContinuation { continuation in
             queue.async {
-                continuation.resume(with: self.send("shot", deviceID, timeout: 15))
+                continuation.resume(with: self.send("shot", deviceID, timeout: Self.requestTimeout))
             }
         }
     }
