@@ -9,6 +9,10 @@ Package.resolved
 # macOS
 .DS_Store
 
+# Python bytecode (from running the bundled helper)
+__pycache__/
+*.pyc
+
 # Editor
 *.xcodeproj/xcuserdata/
 .vscode/
