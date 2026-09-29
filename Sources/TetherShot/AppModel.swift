@@ -15,6 +15,7 @@ final class AppModel: ObservableObject {
     @Published var launchAtLogin: Bool
     @Published var organizeByDevice = UserDefaults.standard.bool(forKey: "organizeByDevice")
     @Published var copyToClipboard = (UserDefaults.standard.object(forKey: "copyToClipboard") as? Bool) ?? true
+    @Published var pasteAfterCapture = (UserDefaults.standard.object(forKey: "pasteAfterCapture") as? Bool) ?? false
     @Published var showInMenuBar: Bool
     @Published var showInDock: Bool
     @Published var autoCheckForUpdates: Bool
@@ -194,6 +195,7 @@ final class AppModel: ObservableObject {
     /// Global-hotkey entry point: re-discovers, then captures the saved device
     /// or every device when no preference has been set.
     func hotKeyCapture() {
+        let destination = pasteAfterCapture && copyToClipboard ? AutoPaste.destination() : nil
         Task {
             let list = await merged(with: usb.discoverDevices())
             applyDiscoveredDevices(list)
@@ -205,9 +207,9 @@ final class AppModel: ObservableObject {
                     NSSound(named: "Funk")?.play()
                     return
                 }
-                for device in devices { await performCapture(device) }
+                for device in devices { await performCapture(device, pasteDestination: destination) }
             case .device(let device):
-                await performCapture(device)
+                await performCapture(device, pasteDestination: destination)
             case .preferredDeviceUnavailable:
                 lastStatus = "Quick capture: \(quickCaptureTargetName) is not connected"
                 NSSound(named: "Funk")?.play()
@@ -215,7 +217,8 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func performCapture(_ device: CaptureDevice) async {
+    private func performCapture(_ device: CaptureDevice, pasteDestination: AutoPaste.Destination? = nil) async {
+        guard !isCapturing else { return }
         isCapturing = true
         defer { isCapturing = false }
         lastStatus = "Capturing \(device.name)…"
@@ -237,6 +240,7 @@ final class AppModel: ObservableObject {
                 png = try await android.capture(device: device)
             }
             try save(png: png, device: device)
+            await pasteIfNeeded(destination: pasteDestination, clipboardChangeCount: NSPasteboard.general.changeCount)
         } catch {
             lastStatus = "Error: \(error.localizedDescription)"
             Log.shared.log("performCapture: error \(error.localizedDescription)")
@@ -260,6 +264,24 @@ final class AppModel: ObservableObject {
         Log.shared.log("performCapture: saved \(url.path)\(copyToClipboard ? " + clipboard" : "")")
         NSSound(named: "Glass")?.play()
         Notifier.notify(title: "TetherShot", body: lastStatus)
+    }
+
+    private func pasteIfNeeded(destination: AutoPaste.Destination?, clipboardChangeCount: Int) async {
+        guard let destination, AutoPastePolicy.shouldPaste(
+            enabled: pasteAfterCapture,
+            copiedToClipboard: copyToClipboard,
+            fromHotKey: true,
+            frontmostIsTetherShot: destination.pid == ProcessInfo.processInfo.processIdentifier
+        ) else { return }
+        switch await AutoPaste.paste(destination: destination, clipboardChangeCount: clipboardChangeCount) {
+        case .posted:
+            lastStatus += " · paste requested"
+        case .needsAccess:
+            AutoPaste.requestAccess()
+            lastStatus = "Copied. To paste automatically, allow TetherShot in Privacy & Security ▸ Accessibility."
+        case .skipped:
+            lastStatus += " · automatic paste skipped"
+        }
     }
 
     // MARK: Permissions / settings
@@ -293,6 +315,12 @@ final class AppModel: ObservableObject {
     func setOrganizeByDevice(_ enabled: Bool) {
         organizeByDevice = enabled
         UserDefaults.standard.set(enabled, forKey: "organizeByDevice")
+    }
+
+    func setPasteAfterCapture(_ enabled: Bool) {
+        pasteAfterCapture = enabled
+        UserDefaults.standard.set(enabled, forKey: "pasteAfterCapture")
+        if enabled && !AutoPaste.hasAccess { AutoPaste.requestAccess() }
     }
 
     func setCopyToClipboard(_ enabled: Bool) {

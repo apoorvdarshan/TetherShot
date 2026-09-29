@@ -8,9 +8,7 @@ import Foundation
 /// Requests are serialized on one queue. Any failure tears the helper down so
 /// the next request starts a fresh one, and callers fall back to the CLI.
 ///
-/// Cleanup is local-only: no `close` request is sent, so nothing can sit ahead
-/// of a capture. The helper reclaims its own sessions when a tunnel address
-/// changes and exits after being idle with no sessions.
+/// Forgetting a device clears the helper's reconnect state with a close request.
 final class WirelessScreenshotSession: @unchecked Sendable {
     /// Covers a warm, which can include a reconnect, and a fresh capture. The
     /// watchdog only fires when the helper is genuinely stuck.
@@ -53,7 +51,9 @@ final class WirelessScreenshotSession: @unchecked Sendable {
         queue.async {
             switch self.send("warm", deviceID, timeout: Self.requestTimeout) {
             case .success:
-                self.stateLock.withLock { self.warmState[deviceID] = .open }
+                self.stateLock.withLock {
+                    if self.warmState[deviceID] != nil { self.warmState[deviceID] = .open }
+                }
             case .failure(let error):
                 Log.shared.log("wireless helper: warm failed \(error.localizedDescription)")
                 self.stateLock.withLock { self.warmState[deviceID] = nil }
@@ -61,16 +61,14 @@ final class WirelessScreenshotSession: @unchecked Sendable {
         }
     }
 
-    /// Drops the helper's cached connection for a device that went away.
-    ///
-    /// This is deliberately local-only: nothing is sent on the capture pipe, so
-    /// cleanup can never delay or interleave with a screenshot. The helper
-    /// already reclaims stale sessions on its own — it drops a session when the
-    /// device's tunnel address changes and exits after being idle with no
-    /// sessions — so the memory it holds is bounded without a `close` request.
-    /// Clearing the warm state makes a returning device warm again.
+    /// Release helper reconnect state as well as the local warm marker.
     func forget(deviceID: String) {
         stateLock.withLock { warmState[deviceID] = nil }
+        queue.async {
+            // Forgetting must never start a new helper just to close a device.
+            guard self.process?.isRunning == true else { return }
+            _ = self.send("close", deviceID, timeout: Self.requestTimeout)
+        }
     }
 
     func capture(deviceID: String) async throws -> Data {

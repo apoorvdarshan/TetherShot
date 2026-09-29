@@ -102,3 +102,11 @@ Configure these GitHub Actions secrets before tagging:
 ## License
 
 By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE).
+
+### Capture regression tests
+
+Run `swift test` for the app tests and
+`python3 -m unittest discover -s scripts -p 'test_*.py'` for the Wi-Fi helper
+lifecycle tests. The helper tests use fake tunnels and sessions; no phone or
+`pymobiledevice3` installation is needed. Auto-paste timing tests inject focus,
+clipboard, and keyboard-event behavior without pasting into a real app.

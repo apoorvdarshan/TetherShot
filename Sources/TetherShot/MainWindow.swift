@@ -176,6 +176,16 @@ private struct StorageDashboardSection: View {
                     .toggleStyle(.switch)
                 }
                 Divider().padding(.leading, 48)
+                SettingRow(icon: "text.insert", title: "Paste After Capture", detail: "\(model.hotKeyDisplay) pastes into the field you're typing in") {
+                    Toggle("Paste After Capture", isOn: Binding(
+                        get: { model.pasteAfterCapture },
+                        set: { model.setPasteAfterCapture($0) }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .disabled(!model.copyToClipboard)
+                }
+                Divider().padding(.leading, 48)
                 SettingRow(icon: "folder.badge.gearshape", title: "Organize by Device", detail: "Create a folder for each phone") {
                     Toggle("Organize by Device", isOn: Binding(
                         get: { model.organizeByDevice },

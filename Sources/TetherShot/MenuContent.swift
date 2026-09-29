@@ -65,6 +65,11 @@ struct MenuContent: View {
             get: { model.copyToClipboard },
             set: { model.setCopyToClipboard($0) }
         ))
+        Toggle("Paste After Capture", isOn: Binding(
+            get: { model.pasteAfterCapture },
+            set: { model.setPasteAfterCapture($0) }
+        ))
+        .disabled(!model.copyToClipboard)
         Toggle("Launch at Login", isOn: Binding(
             get: { model.launchAtLogin },
             set: { model.setLaunchAtLogin($0) }

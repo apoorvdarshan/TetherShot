@@ -149,4 +149,23 @@ final class WirelessScreenshotSessionTests: XCTestCase {
             .split(whereSeparator: \.isNewline).count ?? 0
         XCTAssertEqual(seen, 2, "a forgotten device should warm again")
     }
+
+    func testForgetNotifiesHelperBeforeRewarm() async throws {
+        let log = helperURL.appendingPathExtension("commands")
+        defer { try? FileManager.default.removeItem(at: log) }
+        let session = try session(helper: """
+        while read command udid; do
+          echo "$command $udid" >> '\(log.path)'
+          printf 'K\\000\\000\\000\\000'
+        done
+        """)
+        session.warm(deviceID: "abc")
+        _ = try await session.capture(deviceID: "flush")
+        session.forget(deviceID: "abc")
+        session.warm(deviceID: "abc")
+        _ = try await session.capture(deviceID: "flush")
+        let commands = try String(contentsOf: log, encoding: .utf8)
+        XCTAssertTrue(commands.contains("close abc\nwarm abc"))
+    }
+
 }
