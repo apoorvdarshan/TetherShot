@@ -2,45 +2,89 @@ import AppKit
 import ApplicationServices
 import Carbon.HIToolbox
 
-/// Sends ⌘V to the frontmost app so a hotkey capture lands in whatever field
-/// the user was typing in. Posting keyboard events needs Accessibility access.
+@MainActor
 enum AutoPaste {
-    static var hasAccess: Bool { AXIsProcessTrusted() }
+    enum Outcome: Equatable { case posted, needsAccess, skipped }
 
-    /// Shows the system Accessibility prompt when access is missing. macOS
-    /// only presents it until the user answers, so repeated calls are quiet.
+    struct Destination {
+        let pid: pid_t
+        let focusedElement: AXUIElement?
+    }
+
+    static var hasAccess: Bool { AXIsProcessTrusted() }
+    private static var requestedAccess = false
+
     static func requestAccess() {
+        guard !requestedAccess else { return }
+        requestedAccess = true
         let prompt = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         _ = AXIsProcessTrustedWithOptions([prompt: true] as CFDictionary)
     }
 
-    /// Posts ⌘V. Returns false when Accessibility access is missing.
-    static func paste() async -> Bool {
-        guard hasAccess else { return false }
-        await waitForHotKeyModifiersRelease()
-        let source = CGEventSource(stateID: .hidSystemState)
-        let key = CGKeyCode(kVK_ANSI_V)
-        guard let down = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true),
-              let up = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false) else {
-            return false
-        }
-        // Explicit flags so apps see a plain ⌘V even if a modifier from the
-        // hotkey is still down.
-        down.flags = .maskCommand
-        up.flags = .maskCommand
-        down.post(tap: .cghidEventTap)
-        up.post(tap: .cghidEventTap)
-        return true
+    /// Capture focus at the hotkey, before discovery or screenshot work awaits.
+    static func destination() -> Destination? {
+        guard let app = NSWorkspace.shared.frontmostApplication,
+              app.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return nil }
+        return Destination(pid: app.processIdentifier, focusedElement: focusedElement(pid: app.processIdentifier))
     }
 
-    /// ⌘⇧7 leaves ⇧ held for a moment, and a held ⇧ turns ⌘V into Paste and
-    /// Match Style in many apps. Waits briefly for ⇧, ⌥ and ⌃ to be released.
-    private static func waitForHotKeyModifiersRelease() async {
+    private static func focusedElement(pid: pid_t) -> AXUIElement? {
+        guard hasAccess else { return nil }
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(AXUIElementCreateApplication(pid), kAXFocusedUIElementAttribute as CFString, &value) == .success,
+              let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+        return (value as! AXUIElement)
+    }
+
+    static func paste(destination: Destination, clipboardChangeCount: Int) async -> Outcome {
+        await pasteValidated(
+            access: { hasAccess },
+            waitForRelease: { await waitForHotKeyModifiersRelease() },
+            contextMatches: {
+                guard NSWorkspace.shared.frontmostApplication?.processIdentifier == destination.pid,
+                      NSPasteboard.general.changeCount == clipboardChangeCount,
+                      let original = destination.focusedElement,
+                      let current = focusedElement(pid: destination.pid) else { return false }
+                return CFEqual(original, current)
+            },
+            post: {
+                let source = CGEventSource(stateID: .hidSystemState)
+                let key = CGKeyCode(kVK_ANSI_V)
+                guard let down = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true),
+                      let up = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false) else { return false }
+                down.flags = .maskCommand
+                up.flags = .maskCommand
+                // Target the original process even if another app activates
+                // between the final check and delivery of these events.
+                down.postToPid(destination.pid)
+                up.postToPid(destination.pid)
+                return true
+            }
+        )
+    }
+
+    /// Keep the asynchronous boundary testable without posting real keystrokes.
+    static func pasteValidated(
+        access: () -> Bool,
+        waitForRelease: () async -> Bool,
+        contextMatches: () -> Bool,
+        post: () -> Bool
+    ) async -> Outcome {
+        guard access() else { return .needsAccess }
+        guard contextMatches(), await waitForRelease(), !Task.isCancelled else { return .skipped }
+        guard access() else { return .needsAccess }
+        guard contextMatches() else { return .skipped }
+        return post() ? .posted : .skipped
+    }
+
+    private static func waitForHotKeyModifiersRelease() async -> Bool {
         let stray: CGEventFlags = [.maskShift, .maskAlternate, .maskControl]
         for _ in 0..<50 {
-            if CGEventSource.flagsState(.hidSystemState).intersection(stray).isEmpty { return }
-            try? await Task.sleep(nanoseconds: 10_000_000)
+            if Task.isCancelled { return false }
+            if CGEventSource.flagsState(.hidSystemState).intersection(stray).isEmpty { return true }
+            do { try await Task.sleep(nanoseconds: 10_000_000) } catch { return false }
         }
+        return false
     }
 }
 

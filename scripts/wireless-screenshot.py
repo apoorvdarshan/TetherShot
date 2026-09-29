@@ -37,9 +37,6 @@ import struct
 import sys
 import urllib.request
 
-from pymobiledevice3.remote.remote_service_discovery import RemoteServiceDiscoveryService
-from pymobiledevice3.services.dvt.instruments.dvt_provider import DvtProvider
-from pymobiledevice3.services.dvt.instruments.screenshot import Screenshot
 
 _TUNNELD_URL = "http://127.0.0.1:49151/"
 _CONNECT_TIMEOUT = 6
@@ -62,13 +59,26 @@ class Session:
         self.screenshot: Screenshot | None = None
 
     async def open(self) -> None:
+        from pymobiledevice3.remote.remote_service_discovery import RemoteServiceDiscoveryService
+        from pymobiledevice3.services.dvt.instruments.dvt_provider import DvtProvider
+        from pymobiledevice3.services.dvt.instruments.screenshot import Screenshot
+
         rsd = await self._stack.enter_async_context(RemoteServiceDiscoveryService(self.address))
         dvt = await self._stack.enter_async_context(DvtProvider(rsd))
         self.screenshot = await self._stack.enter_async_context(Screenshot(dvt))
 
     async def close(self) -> None:
-        with contextlib.suppress(Exception):
-            await asyncio.wait_for(self._stack.aclose(), 2)
+        async def cleanup():
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(self._stack.aclose(), _CLOSE_TIMEOUT)
+        task = asyncio.create_task(cleanup())
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            # A capture can interrupt refresh while it closes an old session.
+            # Complete bounded cleanup before letting that capture proceed.
+            await task
+            raise
 
 
 def list_tunnels() -> dict:
@@ -110,6 +120,11 @@ class Server:
         try:
             tunnels = await asyncio.to_thread(list_tunnels)
         except Exception:
+            # Discovery outages must not retain sessionless devices forever.
+            now = asyncio.get_running_loop().time()
+            for udid in list(self.wanted):
+                if udid not in self.sessions and now - self.wanted[udid] >= _EMPTY_EXIT_AFTER:
+                    del self.wanted[udid]
             return
         now = asyncio.get_running_loop().time()
         for udid in list(self.wanted):
@@ -141,7 +156,7 @@ class Server:
         """
         self.wanted.setdefault(udid, asyncio.get_running_loop().time())
         try:
-            address = tunnel_address(udid)
+            address = await asyncio.to_thread(tunnel_address, udid)
         except Exception:
             await self.drop(udid)
             raise
@@ -190,41 +205,58 @@ def reply(out, kind: bytes, payload: bytes) -> None:
     out.flush()
 
 
+async def stop_refresh(task) -> None:
+    """Finish cancellation before handling commands that mutate sessions."""
+    if task is not None:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
 async def serve(out) -> None:
     server = Server()
+    refresh_task = None
     idle_since = asyncio.get_running_loop().time()
-    while True:
-        # Poll stdin so an idle helper with no sessions can retire on its own
-        # instead of staying resident until the client drops it.
-        line = await asyncio.to_thread(_read_line_or_timeout, _IDLE_POLL)
-        if line is None:
-            await server.refresh()
-            if not server.wanted and (
-                asyncio.get_running_loop().time() - idle_since >= _EMPTY_EXIT_AFTER
-            ):
+    try:
+        while True:
+            # Read commands while reconnects run. A command interrupts the
+            # refresh, so it never waits through every device's timeout.
+            line = await asyncio.to_thread(_read_line_or_timeout, _IDLE_POLL)
+            if line is None:
+                if refresh_task is None or refresh_task.done():
+                    if refresh_task is not None:
+                        await refresh_task
+                    refresh_task = asyncio.create_task(server.refresh())
+                if not server.wanted and (
+                    asyncio.get_running_loop().time() - idle_since >= _EMPTY_EXIT_AFTER
+                ):
+                    break
+                continue
+            await stop_refresh(refresh_task)
+            refresh_task = None
+            if not line:
                 break
-            continue
-        if not line:
-            break
-        idle_since = asyncio.get_running_loop().time()
-        command, _, udid = line.decode().strip().partition(" ")
-        try:
-            if command == "warm":
-                await server.session(udid)
-                reply(out, b"K", b"")
-            elif command == "shot":
-                reply(out, b"P", await server.capture(udid))
-            elif command == "close":
-                server.wanted.pop(udid, None)
-                await server.drop(udid)
-                reply(out, b"K", b"")
-            else:
-                reply(out, b"E", f"Unknown request: {command}".encode())
-        except Exception as error:
-            message = str(error) or type(error).__name__
-            reply(out, b"E", message.encode())
-    for udid in list(server.sessions):
-        await server.drop(udid)
+            idle_since = asyncio.get_running_loop().time()
+            command, _, udid = line.decode().strip().partition(" ")
+            try:
+                if command == "warm":
+                    await server.session(udid)
+                    reply(out, b"K", b"")
+                elif command == "shot":
+                    reply(out, b"P", await server.capture(udid))
+                elif command == "close":
+                    server.wanted.pop(udid, None)
+                    await server.drop(udid)
+                    reply(out, b"K", b"")
+                else:
+                    reply(out, b"E", f"Unknown request: {command}".encode())
+            except Exception as error:
+                message = str(error) or type(error).__name__
+                reply(out, b"E", message.encode())
+    finally:
+        await stop_refresh(refresh_task)
+        for udid in list(server.sessions):
+            await server.drop(udid)
 
 
 def _read_line_or_timeout(timeout: float) -> bytes | None:

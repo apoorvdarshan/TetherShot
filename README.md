@@ -123,6 +123,7 @@ Open TetherShot from Applications or Spotlight, or click its menu-bar icon, then
 | **Quick Capture Device** | Choose one phone for the hotkey; the stable selection persists across names and transports |
 | **Hidden Devices** | Exclude unwanted phones from captures, then restore them at any time |
 | **Copy to Clipboard** | Also place each capture on the clipboard (default on) |
+| **Paste After Capture** | Opt in to pasting hotkey captures into the original focused field; requires Accessibility access and clipboard copying (default off). Skips if focus or clipboard contents change. |
 | **Organize by Device** | Save into a per-device subfolder |
 | **Choose Folder…** | Pick any destination; remembered across launches |
 | **Show in Menu Bar** | Keep quick controls in the menu bar (default on) |

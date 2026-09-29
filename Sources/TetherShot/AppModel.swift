@@ -15,7 +15,7 @@ final class AppModel: ObservableObject {
     @Published var launchAtLogin: Bool
     @Published var organizeByDevice = UserDefaults.standard.bool(forKey: "organizeByDevice")
     @Published var copyToClipboard = (UserDefaults.standard.object(forKey: "copyToClipboard") as? Bool) ?? true
-    @Published var pasteAfterCapture = (UserDefaults.standard.object(forKey: "pasteAfterCapture") as? Bool) ?? true
+    @Published var pasteAfterCapture = (UserDefaults.standard.object(forKey: "pasteAfterCapture") as? Bool) ?? false
     @Published var showInMenuBar: Bool
     @Published var showInDock: Bool
     @Published var autoCheckForUpdates: Bool
@@ -195,6 +195,7 @@ final class AppModel: ObservableObject {
     /// Global-hotkey entry point: re-discovers, then captures the saved device
     /// or every device when no preference has been set.
     func hotKeyCapture() {
+        let destination = pasteAfterCapture && copyToClipboard ? AutoPaste.destination() : nil
         Task {
             let list = await merged(with: usb.discoverDevices())
             applyDiscoveredDevices(list)
@@ -206,9 +207,9 @@ final class AppModel: ObservableObject {
                     NSSound(named: "Funk")?.play()
                     return
                 }
-                for device in devices { await performCapture(device, fromHotKey: true) }
+                for device in devices { await performCapture(device, pasteDestination: destination) }
             case .device(let device):
-                await performCapture(device, fromHotKey: true)
+                await performCapture(device, pasteDestination: destination)
             case .preferredDeviceUnavailable:
                 lastStatus = "Quick capture: \(quickCaptureTargetName) is not connected"
                 NSSound(named: "Funk")?.play()
@@ -216,7 +217,8 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func performCapture(_ device: CaptureDevice, fromHotKey: Bool = false) async {
+    private func performCapture(_ device: CaptureDevice, pasteDestination: AutoPaste.Destination? = nil) async {
+        guard !isCapturing else { return }
         isCapturing = true
         defer { isCapturing = false }
         lastStatus = "Capturing \(device.name)…"
@@ -238,7 +240,7 @@ final class AppModel: ObservableObject {
                 png = try await android.capture(device: device)
             }
             try save(png: png, device: device)
-            await pasteIfNeeded(fromHotKey: fromHotKey)
+            await pasteIfNeeded(destination: pasteDestination, clipboardChangeCount: NSPasteboard.general.changeCount)
         } catch {
             lastStatus = "Error: \(error.localizedDescription)"
             Log.shared.log("performCapture: error \(error.localizedDescription)")
@@ -264,22 +266,21 @@ final class AppModel: ObservableObject {
         Notifier.notify(title: "TetherShot", body: lastStatus)
     }
 
-    private func pasteIfNeeded(fromHotKey: Bool) async {
-        let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        guard AutoPastePolicy.shouldPaste(
+    private func pasteIfNeeded(destination: AutoPaste.Destination?, clipboardChangeCount: Int) async {
+        guard let destination, AutoPastePolicy.shouldPaste(
             enabled: pasteAfterCapture,
             copiedToClipboard: copyToClipboard,
-            fromHotKey: fromHotKey,
-            frontmostIsTetherShot: frontmost == Bundle.main.bundleIdentifier
+            fromHotKey: true,
+            frontmostIsTetherShot: destination.pid == ProcessInfo.processInfo.processIdentifier
         ) else { return }
-
-        if await AutoPaste.paste() {
-            lastStatus += " · pasted"
-            Log.shared.log("performCapture: pasted into \(frontmost ?? "frontmost app")")
-        } else {
+        switch await AutoPaste.paste(destination: destination, clipboardChangeCount: clipboardChangeCount) {
+        case .posted:
+            lastStatus += " · paste requested"
+        case .needsAccess:
             AutoPaste.requestAccess()
             lastStatus = "Copied. To paste automatically, allow TetherShot in Privacy & Security ▸ Accessibility."
-            Log.shared.log("performCapture: paste skipped, no Accessibility access")
+        case .skipped:
+            lastStatus += " · automatic paste skipped"
         }
     }
 
