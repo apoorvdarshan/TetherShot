@@ -1,8 +1,27 @@
 import XCTest
+import ApplicationServices
 @testable import TetherShot
 
 @MainActor
 final class AutoPasteTimingTests: XCTestCase {
+    func testMissingAccessibilityFocusDoesNotBlockPaste() async {
+        var posted = false
+        let result = await AutoPaste.pasteValidated(
+            access: { true }, waitForRelease: { true },
+            contextMatches: { AutoPaste.focusMatches(original: nil, current: nil) },
+            post: { posted = true; return true }
+        )
+        XCTAssertEqual(result, .posted)
+        XCTAssertTrue(posted)
+    }
+
+    func testExistingFocusStillRequiresSameElement() {
+        let original = AXUIElementCreateApplication(123)
+        XCTAssertTrue(AutoPaste.focusMatches(original: original, current: AXUIElementCreateApplication(123)))
+        XCTAssertFalse(AutoPaste.focusMatches(original: original, current: AXUIElementCreateApplication(456)))
+        XCTAssertFalse(AutoPaste.focusMatches(original: original, current: nil))
+    }
+
     func testChangedDestinationDuringWaitSkipsPosting() async {
         var destination = 1
         var posted = false

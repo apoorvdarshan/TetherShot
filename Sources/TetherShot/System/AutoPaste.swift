@@ -42,10 +42,8 @@ enum AutoPaste {
             waitForRelease: { await waitForHotKeyModifiersRelease() },
             contextMatches: {
                 guard NSWorkspace.shared.frontmostApplication?.processIdentifier == destination.pid,
-                      NSPasteboard.general.changeCount == clipboardChangeCount,
-                      let original = destination.focusedElement,
-                      let current = focusedElement(pid: destination.pid) else { return false }
-                return CFEqual(original, current)
+                      NSPasteboard.general.changeCount == clipboardChangeCount else { return false }
+                return focusMatches(original: destination.focusedElement, current: focusedElement(pid: destination.pid))
             },
             post: {
                 let source = CGEventSource(stateID: .hidSystemState)
@@ -61,6 +59,14 @@ enum AutoPaste {
                 return true
             }
         )
+    }
+
+    /// Some apps accept paste without exposing an AX focused element. In that
+    /// case the caller still verifies the destination process and clipboard.
+    static func focusMatches(original: AXUIElement?, current: AXUIElement?) -> Bool {
+        guard let original else { return true }
+        guard let current else { return false }
+        return CFEqual(original, current)
     }
 
     /// Keep the asynchronous boundary testable without posting real keystrokes.

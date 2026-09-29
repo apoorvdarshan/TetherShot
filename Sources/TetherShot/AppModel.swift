@@ -276,11 +276,14 @@ final class AppModel: ObservableObject {
         switch await AutoPaste.paste(destination: destination, clipboardChangeCount: clipboardChangeCount) {
         case .posted:
             lastStatus += " · paste requested"
+            Log.shared.log("automatic paste: posted to pid \(destination.pid)")
         case .needsAccess:
             AutoPaste.requestAccess()
             lastStatus = "Copied. To paste automatically, allow TetherShot in Privacy & Security ▸ Accessibility."
+            Log.shared.log("automatic paste: Accessibility access needed")
         case .skipped:
             lastStatus += " · automatic paste skipped"
+            Log.shared.log("automatic paste: skipped after destination, clipboard, or modifier check")
         }
     }
 
