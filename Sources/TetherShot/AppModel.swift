@@ -8,6 +8,7 @@ import AVFoundation
 @MainActor
 final class AppModel: ObservableObject {
     @Published var devices: [CaptureDevice] = []
+    @Published private(set) var isRefreshingDevices = false
     @Published var destinationFolder: URL = FolderStore.load()
     @Published var lastStatus: String = ""
     @Published var wirelessReady = false
@@ -61,9 +62,12 @@ final class AppModel: ObservableObject {
 
     /// Merges USB (AVFoundation, instant) and Wi-Fi (tunneld) device lists.
     func refreshDevices() {
+        guard !isRefreshingDevices else { return }
+        isRefreshingDevices = true
         let usbDevices = usb.discoverDevices()
         applyDiscoveredDevices(usbDevices)            // show USB immediately
         Task {
+            defer { isRefreshingDevices = false }
             async let refreshedUSBDevices = discoverUSBDevicesWithStartupRetry(initial: usbDevices)
             async let wirelessDevices = wireless.discoverDevicesAsync()
             async let androidDevices = android.discoverDevicesAsync()
