@@ -11,7 +11,7 @@ struct MenuContent: View {
             header
             Divider()
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 12) {
                     devicesSection
                     Divider()
                     captureSection
@@ -24,13 +24,13 @@ struct MenuContent: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                .padding(18)
+                .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             Divider()
             footer
         }
-        .frame(width: 380, height: 600)
+        .frame(width: 360, height: 480)
         .font(.system(size: 13))
         .buttonStyle(.borderless)
         .toggleStyle(.switch)
@@ -40,40 +40,42 @@ struct MenuContent: View {
     private var header: some View {
         HStack(spacing: 10) {
             Image(systemName: "camera.viewfinder")
-                .font(.system(size: 22, weight: .medium))
+                .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(TetherShotTheme.accent)
-                .frame(width: 40, height: 40)
-                .background(TetherShotTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
-            VStack(alignment: .leading, spacing: 3) {
-                Text("TetherShot").font(.system(size: 16, weight: .semibold))
-                Text("Screenshots from your phone").font(.caption).foregroundStyle(.secondary)
-            }
+            Text("TetherShot").font(.system(size: 14, weight: .semibold))
             Spacer()
             Button(action: showMainWindow) {
-                Image(systemName: "arrow.up.forward.app")
-                    .font(.system(size: 16))
-                    .frame(width: 30, height: 30)
+                Label("Open App", systemImage: "arrow.up.forward.app")
             }
+            .buttonStyle(.bordered)
+            .tint(.primary)
             .help("Show TetherShot")
             .accessibilityLabel("Show TetherShot")
         }
-        .padding(16)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
     }
 
     private var devicesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 sectionTitle("Devices")
                 Spacer()
-                if model.isRefreshingDevices {
-                    ProgressView().controlSize(.mini)
-                    Text("Refreshing…").font(.caption).foregroundStyle(.secondary)
-                } else {
-                    Button(action: model.refreshDevices) {
-                        Label("Refresh Devices", systemImage: "arrow.clockwise")
-                            .font(.system(size: 12, weight: .medium))
+                Button(action: model.refreshDevices) {
+                    HStack(spacing: 5) {
+                        if model.isRefreshingDevices {
+                            ProgressView().controlSize(.mini).frame(width: 12, height: 12)
+                        } else {
+                            Image(systemName: "arrow.clockwise").frame(width: 12, height: 12)
+                        }
+                        Text(model.isRefreshingDevices ? "Refreshing…" : "Refresh")
                     }
                 }
+                .buttonStyle(.bordered)
+                .tint(.primary)
+                .disabled(model.isRefreshingDevices)
+                .help("Refresh Devices")
+                .accessibilityLabel("Refresh Devices")
             }
             if model.devices.isEmpty {
                 HStack(spacing: 12) {
@@ -88,31 +90,29 @@ struct MenuContent: View {
             } else {
                 VStack(spacing: 6) {
                     ForEach(model.devices) { device in
-                        Button { model.capture(device) } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: device.platformName == "iPhone" ? "iphone" : "smartphone")
-                                    .font(.system(size: 23))
-                                    .foregroundStyle(TetherShotTheme.accent)
-                                    .frame(width: 28)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(device.name)
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(.primary)
-                                        .lineLimit(1)
-                                    Label(device.availableConnectionSummary, systemImage: device.systemImageName)
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer(minLength: 4)
-                                Image(systemName: "camera.fill").foregroundStyle(TetherShotTheme.accent)
+                        HStack(spacing: 10) {
+                            Image(systemName: device.platformName == "iPhone" ? "iphone" : "smartphone")
+                                .font(.system(size: 22))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(device.name)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Label(device.availableConnectionSummary, systemImage: device.systemImageName)
+                                    .font(.caption).foregroundStyle(.secondary)
                             }
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(TetherShotTheme.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
-                            .contentShape(RoundedRectangle(cornerRadius: 10))
+                            Spacer(minLength: 4)
+                            Button { model.capture(device) } label: {
+                                Label("Capture", systemImage: "camera")
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .help("Capture a screenshot from \(device.name)")
+                            .accessibilityLabel("Capture \(device.name)")
                         }
-                        .buttonStyle(.plain)
-                        .help("Capture a screenshot from \(device.name)")
-                        .accessibilityLabel("Capture \(device.name)")
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
                 if model.devices.count > 1 {
@@ -125,18 +125,18 @@ struct MenuContent: View {
                 Text("Quick capture").foregroundStyle(.secondary)
                 Spacer()
                 Text(model.hotKeyDisplay)
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .padding(.horizontal, 7).padding(.vertical, 4)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 5))
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.secondary)
             }
             HStack {
                 Text("Target").foregroundStyle(.secondary)
                 Spacer()
                 QuickCaptureDevicePicker(model: model)
                     .pickerStyle(.menu)
+                    .tint(.primary)
                     .labelsHidden()
                     .lineLimit(1)
-                    .frame(maxWidth: 240, alignment: .trailing)
+                    .frame(maxWidth: 230, alignment: .trailing)
             }
             HStack {
                 Label(model.wirelessReady ? "Wi-Fi ready" : "Wi-Fi not configured", systemImage: "wifi")
@@ -174,6 +174,8 @@ struct MenuContent: View {
             Image(systemName: "ellipsis.circle")
         }
         .menuStyle(.borderlessButton)
+        .tint(.primary)
+        .foregroundStyle(.secondary)
         .fixedSize()
         .disabled(model.devices.isEmpty && model.hiddenDevices.isEmpty)
         .help("Manage visible and hidden devices")
@@ -181,24 +183,26 @@ struct MenuContent: View {
     }
 
     private var captureSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Capture & Save")
             HStack(spacing: 10) {
-                Image(systemName: "folder").foregroundStyle(TetherShotTheme.accent)
+                Image(systemName: "folder").foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(model.destinationFolder.lastPathComponent).fontWeight(.medium).lineLimit(1)
                     Text("Save location").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button("Change…", action: model.chooseFolder)
+                    .buttonStyle(.bordered)
+                    .tint(.primary)
                 Button(action: model.openFolder) {
                     Image(systemName: "arrow.up.forward.square")
                 }
                 .help("Open Folder")
                 .accessibilityLabel("Open Folder")
+                .foregroundStyle(.secondary)
             }
-            .padding(10)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+            .padding(.vertical, 3)
             .help(model.destinationFolder.path)
             preference("Organize by Device", value: model.organizeByDevice, set: model.setOrganizeByDevice)
             preference("Copy to Clipboard", value: model.copyToClipboard, set: model.setCopyToClipboard)
@@ -209,7 +213,7 @@ struct MenuContent: View {
 
     private var preferencesSection: some View {
         DisclosureGroup(isExpanded: $preferencesExpanded) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 preference("Launch at Login", value: model.launchAtLogin, set: model.setLaunchAtLogin)
                 preference("Show in Menu Bar", value: model.showInMenuBar, set: model.setShowInMenuBar)
                 preference("Show in Dock", value: model.showInDock, set: model.setShowInDock)
@@ -222,7 +226,7 @@ struct MenuContent: View {
                 preference("Auto-check for Updates", value: model.autoCheckForUpdates, set: model.setAutoCheckForUpdates)
                 preference("Auto-update & Relaunch", value: model.autoInstallUpdates, set: model.setAutoInstallUpdates)
             }
-            .padding(.top, 12)
+            .padding(.top, 10)
         } label: {
             Label("Preferences", systemImage: "slider.horizontal.3")
                 .font(.system(size: 13, weight: .medium))
@@ -234,7 +238,7 @@ struct MenuContent: View {
         HStack {
             Text("v\(model.appVersion)").font(.caption).foregroundStyle(.tertiary)
             Spacer()
-            Menu("Help & Community") {
+            Menu("Help") {
                 Button("View Source on GitHub") { open(ProjectLinks.repository) }
                 Button("Report an Issue…") { open(ProjectLinks.issues) }
                 Button("MIT License") { open(ProjectLinks.license) }
@@ -244,13 +248,15 @@ struct MenuContent: View {
                 Button("Follow @apoorvdarshan on X") { open(ProjectLinks.x) }
             }
             .menuStyle(.borderlessButton)
+            .tint(.primary)
+            .foregroundStyle(.secondary)
             .fixedSize()
             Divider().frame(height: 12).padding(.horizontal, 4)
             Button("Quit") { NSApplication.shared.terminate(nil) }
                 .keyboardShortcut("q")
                 .foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 18).padding(.vertical, 12)
+        .padding(.horizontal, 14).padding(.vertical, 10)
     }
 
     private func sectionTitle(_ title: String) -> some View {
