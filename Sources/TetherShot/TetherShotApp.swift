@@ -25,7 +25,9 @@ struct TetherShotApp: App {
             MenuContent(model: model, showMainWindow: appDelegate.showMainWindow)
                 .tint(TetherShotTheme.accent)
         }
-        .menuBarExtraStyle(.menu)
+        // A standard menu dismisses on every action and prevents users from
+        // watching the asynchronous device discovery update the list.
+        .menuBarExtraStyle(.window)
     }
 }
 

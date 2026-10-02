@@ -1,11 +1,25 @@
 import SwiftUI
 
-/// The menu shown when the user clicks the TetherShot status-bar icon.
+/// The persistent panel shown when the user clicks the TetherShot status-bar icon.
 struct MenuContent: View {
     @ObservedObject var model: AppModel
     let showMainWindow: () -> Void
 
     var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                menuItems
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(width: 340, height: 600)
+        .buttonStyle(.borderless)
+        .toggleStyle(.checkbox)
+    }
+
+    @ViewBuilder
+    private var menuItems: some View {
         Button("Show TetherShot") { showMainWindow() }
 
         Divider()
