@@ -168,14 +168,15 @@ final class WirelessCapture: CaptureBackend {
     /// while the app runs doesn't keep showing its old name.
     func discoverDevicesAsync(refreshNames: Bool = true) async -> [CaptureDevice] {
         guard let tunnels = await tunneldDevices() else { return [] }
+        let tunneledDeviceIDs = tunnels.filter { !$0.value.isEmpty }.map(\.key)
         let cached = cachedNames()
         let needsLookup = refreshNames || tunnels.keys.contains { cached[$0] == nil }
         let names: [String: String]
         if needsLookup {
-            names = await deviceNames()
+            names = await deviceNames(tunneledDeviceIDs: tunneledDeviceIDs)
         } else {
             names = cached
-            scheduleNameRefresh()
+            scheduleNameRefresh(tunneledDeviceIDs: tunneledDeviceIDs)
         }
         var devices: [CaptureDevice] = []
         for (udid, interfaces) in tunnels where !interfaces.isEmpty {
@@ -192,7 +193,7 @@ final class WirelessCapture: CaptureBackend {
 
     /// Re-resolves device names off the capture path, at most once every few
     /// seconds, so a rename shows up without slowing the hotkey down.
-    private func scheduleNameRefresh() {
+    private func scheduleNameRefresh(tunneledDeviceIDs: [String]) {
         let now = Date()
         let shouldStart = nameRefreshLock.withLock {
             guard now.timeIntervalSince(lastNameRefresh) > 5 else { return false }
@@ -201,25 +202,18 @@ final class WirelessCapture: CaptureBackend {
         }
         guard shouldStart else { return }
         Task.detached(priority: .utility) { [weak self] in
-            _ = await self?.deviceNames()
+            _ = await self?.deviceNames(tunneledDeviceIDs: tunneledDeviceIDs)
         }
     }
 
-    /// UDID -> friendly name, via `pymobiledevice3 usbmux list` (covers USB and
-    /// Wi-Fi-sync devices). Cached for the session.
-    private func deviceNames() async -> [String: String] {
+    /// Resolve USB/Wi-Fi-sync names first, then query active tunnels for phones
+    /// absent from usbmux (including pure Wi-Fi devices). Cache successful names
+    /// so a transient failure cannot replace them with an identifier.
+    private func deviceNames(tunneledDeviceIDs: [String]) async -> [String: String] {
         guard let pmd3 = Self.pmd3Path else { return cachedNames() }
-        let result = await Proc.run(pmd3, ["usbmux", "list"], timeout: 8)
-        var discoveredNames: [String: String] = [:]
-        if let data = result.stdout.data(using: .utf8),
-           let list = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
-            for entry in list {
-                if let udid = entry["Identifier"] as? String,
-                   let name = entry["DeviceName"] as? String {
-                    discoveredNames[udid] = name
-                }
-            }
-        }
+        let discoveredNames = await WirelessDeviceNameLookup.resolve(
+            pmd3Path: pmd3, tunneledDeviceIDs: tunneledDeviceIDs
+        )
         return nameCacheLock.withLock {
             nameCache.merge(discoveredNames) { _, latest in latest }
             return nameCache
