@@ -72,6 +72,42 @@ cleanup_entitlements_dump
   echo "error: packaged app is missing the Camera entitlement" >&2
   exit 1
 }
+notarize() {
+  if [[ -n "${ASC_KEY_PATH:-}" ]]; then
+    : "${ASC_KEY_ID:?ASC_KEY_ID is required for ASC notarization}"
+    notary_args=(
+      --key "$ASC_KEY_PATH"
+      --key-id "$ASC_KEY_ID"
+    )
+    if [[ -n "${ASC_ISSUER_ID:-}" ]]; then
+      notary_args+=(--issuer "$ASC_ISSUER_ID")
+    fi
+    xcrun notarytool submit "$1" "${notary_args[@]}" --wait
+  else
+    : "${APPLE_ID:?APPLE_ID is required for Apple ID notarization}"
+    : "${APPLE_TEAM_ID:?APPLE_TEAM_ID is required for Apple ID notarization}"
+    : "${APPLE_APP_PASSWORD:?APPLE_APP_PASSWORD is required for Apple ID notarization}"
+    xcrun notarytool submit "$1" \
+      --apple-id "$APPLE_ID" \
+      --team-id "$APPLE_TEAM_ID" \
+      --password "$APPLE_APP_PASSWORD" \
+      --wait
+  fi
+}
+
+# Staple the app itself, not just the DMG: Homebrew and drag-installs copy the
+# .app out of the DMG, and without its own ticket Gatekeeper must reach Apple
+# online. At login, before the network is up, that check fails and macOS
+# blocks the app with "Apple could not verify TetherShot".
+if [[ "${NOTARIZE:-0}" == "1" ]]; then
+  APP_ZIP="$WORK_DIR/TetherShot.zip"
+  ditto -c -k --keepParent "$APP" "$APP_ZIP"
+  notarize "$APP_ZIP"
+  rm -f "$APP_ZIP"
+  xcrun stapler staple "$APP"
+  xcrun stapler validate "$APP"
+fi
+
 cp -R "$APP" "$WORK_DIR/volume/TetherShot.app"
 ln -s /Applications "$WORK_DIR/volume/Applications"
 rm -f "$DMG"
@@ -82,26 +118,7 @@ if [[ -n "$IDENTITY" ]]; then
 fi
 
 if [[ "${NOTARIZE:-0}" == "1" ]]; then
-  if [[ -n "${ASC_KEY_PATH:-}" ]]; then
-    : "${ASC_KEY_ID:?ASC_KEY_ID is required for ASC notarization}"
-    notary_args=(
-      --key "$ASC_KEY_PATH"
-      --key-id "$ASC_KEY_ID"
-    )
-    if [[ -n "${ASC_ISSUER_ID:-}" ]]; then
-      notary_args+=(--issuer "$ASC_ISSUER_ID")
-    fi
-    xcrun notarytool submit "$DMG" "${notary_args[@]}" --wait
-  else
-    : "${APPLE_ID:?APPLE_ID is required for Apple ID notarization}"
-    : "${APPLE_TEAM_ID:?APPLE_TEAM_ID is required for Apple ID notarization}"
-    : "${APPLE_APP_PASSWORD:?APPLE_APP_PASSWORD is required for Apple ID notarization}"
-    xcrun notarytool submit "$DMG" \
-      --apple-id "$APPLE_ID" \
-      --team-id "$APPLE_TEAM_ID" \
-      --password "$APPLE_APP_PASSWORD" \
-      --wait
-  fi
+  notarize "$DMG"
   xcrun stapler staple "$DMG"
   xcrun stapler validate "$DMG"
 fi
