@@ -108,7 +108,7 @@ jobs:
           test -n "$DEVELOPER_ID_APPLICATION" || { echo "::error::Missing DEVELOPER_ID_APPLICATION_NAME"; exit 1; }
           ./script/build_dmg.sh
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: tethershot-dmg
           path: dist/TetherShot-*-universal.dmg
