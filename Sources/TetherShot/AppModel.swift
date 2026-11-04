@@ -12,6 +12,7 @@ final class AppModel: ObservableObject {
     @Published var destinationFolder: URL = FolderStore.load()
     @Published var lastStatus: String = ""
     @Published var wirelessReady = false
+    @Published private(set) var isSettingUpWireless = false
     @Published var androidReady = AndroidCapture.adbPath != nil
     @Published var launchAtLogin: Bool
     @Published var organizeByDevice = UserDefaults.standard.bool(forKey: "organizeByDevice")
@@ -128,7 +129,7 @@ final class AppModel: ObservableObject {
         // capture the hotkey is waiting on.
         let currentWireless = Set(devices.filter { $0.connection == .wireless }.map(\.captureID))
         for device in devices where device.connection == .wireless
-            && !previousWireless.contains(device.captureID) {
+            && !isSettingUpWireless && !previousWireless.contains(device.captureID) {
             wireless.prewarm(deviceID: device.captureID)
         }
         wireless.forget(deviceIDs: previousWireless.subtracting(currentWireless))
@@ -222,6 +223,10 @@ final class AppModel: ObservableObject {
     }
 
     private func performCapture(_ device: CaptureDevice, pasteDestination: AutoPaste.Destination? = nil) async {
+        guard !isSettingUpWireless else {
+            lastStatus = "Finish Wi-Fi repair before capturing."
+            return
+        }
         guard !isCapturing else { return }
         isCapturing = true
         defer { isCapturing = false }
@@ -438,15 +443,20 @@ final class AppModel: ObservableObject {
     /// Runs the bundled installer for the wireless tunnel service. The script
     /// itself raises the admin-password prompt.
     func setupWireless() {
+        guard !isSettingUpWireless, !isCapturing else { return }
         guard let script = Bundle.main.url(forResource: "install-tunneld", withExtension: "sh") else {
             lastStatus = "Installer missing from app bundle."
             return
         }
-        lastStatus = "Setting up wireless… (enter your password)"
+        isSettingUpWireless = true
+        wireless.resetHelper()
+        lastStatus = "Repairing Wi-Fi capture… (administrator approval required)"
         Task {
-            let result = await Proc.run("/bin/bash", [script.path], timeout: 180)
+            defer { isSettingUpWireless = false }
+            let result = await Proc.run("/bin/bash", [script.path], timeout: 600)
+            wireless.resetHelper()
             lastStatus = result.status == 0
-                ? "Wireless ready. Capturing over Wi-Fi is now available."
+                ? (result.stdout.split(whereSeparator: \.isNewline).last.map(String.init) ?? "Wi-Fi service installed.")
                 : "Wireless setup failed: \(result.stderr.split(whereSeparator: \.isNewline).first.map(String.init) ?? "unknown")"
             refreshDevices()
         }

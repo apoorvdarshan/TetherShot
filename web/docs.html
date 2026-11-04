@@ -137,16 +137,14 @@ open .build/TetherShot.app</pre>
     <p>Wireless capture uses a root tunnel daemon (<code>tunneld</code>) that keeps a RemoteXPC tunnel alive so captures need no <code>sudo</code>. One-time setup:</p>
     <div class="code">
       <div class="code-head">one-time setup</div>
-<pre><span class="c"># 1 · install pymobiledevice3 (the engine)</span>
-pip3 install -U pymobiledevice3
-
-<span class="c"># 2 · install the tunnel service (asks for admin password once)</span>
+<pre><span class="c"># install/repair the engine and tunnel (admin approval)</span>
 <span class="k">tethershot</span> setup-wifi
 
-<span class="c"># 3 · with the iPhone connected over USB once:</span>
+<span class="c"># with the iPhone connected over USB once:</span>
 <span class="c">#     enable Developer Mode (Settings ▸ Privacy &amp; Security)</span>
-pymobiledevice3 lockdown wifi-connections --state on</pre>
+"$HOME/.local/share/tethershot/wireless/bin/pymobiledevice3" lockdown wifi-connections --state on</pre>
     </div>
+    <p>Setup installs a tested engine version in TetherShot's own environment using Homebrew's Python and uv. It repairs old file permissions and refreshes legacy Wi-Fi pairing over an existing trusted connection, preserving private backups. If a phone appears but capture fails, use <strong>Connections → iPhone Wi-Fi → Repair…</strong> or run setup again. Connect and unlock the affected phone by USB if requested.</p>
     <p>After that you can unplug. While the iPhone and Mac are on the same Wi-Fi, the menu shows it as <code>(Wi-Fi)</code> and captures are pixel-perfect — even when the phone is locked. The tunnel daemon is discovered automatically.</p>
     <p class="note"><b>Why not AirPlay mirroring?</b> On macOS Tahoe, a mirrored iPhone window blacks out whenever any screen-capture context is active, so TetherShot uses the developer-services path instead — it captures the device's own framebuffer regardless of transport.</p>
 

@@ -46,11 +46,19 @@ jobs:
             exit 1
           fi
 
+      - name: Test wireless setup and capture regressions
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_*.py'
+          bash -n scripts/install-tunneld.sh
+
   dmg:
     needs: validate
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+
+      - name: Run macOS regression tests before packaging
+        run: swift test
 
       - name: Require signing and notarization secrets
         env:

@@ -139,12 +139,11 @@ struct MenuContent: View {
                     .frame(maxWidth: 230, alignment: .trailing)
             }
             HStack {
-                Label(model.wirelessReady ? "Wi-Fi ready" : "Wi-Fi not configured", systemImage: "wifi")
+                Label(model.wirelessReady ? "Wi-Fi service installed" : "Wi-Fi not configured", systemImage: "wifi")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                if !model.wirelessReady {
-                    Button("Set Up…", action: model.setupWireless).font(.caption)
-                }
+                Button(model.wirelessReady ? "Repair…" : "Set Up…", action: model.setupWireless).font(.caption)
+                    .disabled(model.isSettingUpWireless)
                 deviceManagementMenu
             }
         }

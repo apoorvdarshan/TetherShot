@@ -1,0 +1,19 @@
+name: Wireless tests
+on:
+  pull_request:
+    paths: ['scripts/**', '.github/workflows/wireless-tests.yml']
+  push:
+    branches: [main]
+    paths: ['scripts/**', '.github/workflows/wireless-tests.yml']
+permissions:
+  contents: read
+concurrency:
+  group: wireless-tests-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      - run: bash -n scripts/install-tunneld.sh

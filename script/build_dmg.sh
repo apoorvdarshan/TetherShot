@@ -28,6 +28,8 @@ cp \
   scripts/install-tunneld.sh \
   scripts/uninstall-tunneld.sh \
   scripts/wireless-screenshot.py \
+  scripts/wireless-setup.py \
+  scripts/requirements-wireless.txt \
   "$CONTENTS/Resources/"
 chmod +x \
   "$CONTENTS/MacOS/TetherShot" \
@@ -41,6 +43,9 @@ chmod +x \
   echo "error: packaged app is missing the Wi-Fi screenshot helper" >&2
   exit 1
 }
+for resource in wireless-setup.py requirements-wireless.txt; do
+  [[ -f "$CONTENTS/Resources/$resource" ]] || { echo "error: missing $resource" >&2; exit 1; }
+done
 
 ICON_TMP="$(mktemp -d)/AppIcon.iconset"
 mkdir -p "$ICON_TMP"

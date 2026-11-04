@@ -136,14 +136,29 @@ Open TetherShot from Applications or Spotlight, or click its menu-bar icon, then
 Wi-Fi capture uses a root LaunchDaemon (`tunneld`) that keeps a RemoteXPC tunnel alive so captures need no sudo.
 
 ```bash
-pip3 install -U pymobiledevice3            # the engine
-tethershot setup-wifi                       # installs the tunnel daemon (admin password once)
+tethershot setup-wifi  # installs/repairs the engine and tunnel (admin approval)
 ```
 
 Then, with the iPhone connected by USB once:
 
 - Enable **Developer Mode** — Settings ▸ Privacy & Security ▸ Developer Mode
-- Enable Wi-Fi reachability — `pymobiledevice3 lockdown wifi-connections --state on`
+- Enable Wi-Fi reachability with the managed engine:
+
+```bash
+"$HOME/.local/share/tethershot/wireless/bin/pymobiledevice3" lockdown wifi-connections --state on
+```
+
+Setup uses Homebrew's Python and uv to install a tested `pymobiledevice3` version
+in TetherShot's own environment. It upgrades the engine, repairs root-owned
+pairing files, and refreshes legacy Wi-Fi discovery keys over an existing trusted
+USB or Wi-Fi connection. Existing working pairings stay unchanged; migrated keys
+are backed up privately under `~/.pymobiledevice3/backups/`.
+
+If the phone appears but capture fails, use **Connections → iPhone Wi-Fi → Repair…**
+(also available in the menu bar), or run `tethershot setup-wifi` again. Unlock and
+connect the affected phone by USB if setup asks. Older engines can discover an
+iOS 27.2 phone while its screenshot service refuses connections; Repair updates
+both the engine and pairing instead of repeatedly restarting the app.
 
 After that you can unplug. While the iPhone and Mac share a Wi-Fi network, the menu shows it as **(Wi-Fi)** and `tunneld` discovers it automatically. Remove the daemon with `bash scripts/uninstall-tunneld.sh`.
 

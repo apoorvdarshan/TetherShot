@@ -17,16 +17,17 @@ final class WirelessCapture: CaptureBackend {
     /// tunneld's default local HTTP API.
     private static let tunneldURL = URL(string: "http://127.0.0.1:49151/")!
 
-    /// Resolved once: absolute path to pymobiledevice3 (the app's PATH from
-    /// Finder doesn't include Homebrew).
-    static let pmd3Path: String? = {
+    /// Re-resolve after setup: Finder's PATH omits Homebrew, and Repair can
+    /// install the managed engine while this app is still running.
+    static var pmd3Path: String? {
         let candidates = [
+            "\(NSHomeDirectory())/.local/share/tethershot/wireless/bin/pymobiledevice3",
+            "\(NSHomeDirectory())/.local/bin/pymobiledevice3",
             "/opt/homebrew/bin/pymobiledevice3",
             "/usr/local/bin/pymobiledevice3",
-            "\(NSHomeDirectory())/.local/bin/pymobiledevice3",
         ]
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
-    }()
+    }
 
     /// The interpreter pymobiledevice3 was installed into. Console scripts
     /// usually point straight at the venv python, but some (including pipx and
@@ -34,7 +35,7 @@ final class WirelessCapture: CaptureBackend {
     /// when the python path has spaces or is too long for a shebang, so resolve
     /// those too. Returns nil when no usable interpreter is found; the caller
     /// then logs why and falls back to the one-shot CLI.
-    private static let pythonPath: String? = {
+    private static var pythonPath: String? {
         guard let pmd3Path,
               let handle = FileHandle(forReadingAtPath: pmd3Path),
               // A PATH-based shebang line can be long; read generously.
@@ -57,7 +58,7 @@ final class WirelessCapture: CaptureBackend {
             : lookupInPATH(command)
         guard let resolved, FileManager.default.isExecutableFile(atPath: resolved) else { return nil }
         return resolved
-    }()
+    }
 
     /// Extracts the interpreter from pip's `#!/bin/sh` console-script wrapper,
     /// e.g. `'''exec' "/opt/my venv/bin/python" "$0" "$@"`. Returns nil when the
@@ -115,17 +116,36 @@ final class WirelessCapture: CaptureBackend {
 
     /// nil when the helper or its interpreter is missing; captures then use
     /// the one-shot CLI only.
-    private let session: WirelessScreenshotSession? = {
-        guard let python = WirelessCapture.pythonPath else {
-            Log.shared.log("wireless helper: no python interpreter found; using CLI capture")
-            return nil
+    private let sessionLock = NSLock()
+    private var helperSession: WirelessScreenshotSession?
+    private var helperPythonPath: String?
+
+    private var session: WirelessScreenshotSession? {
+        sessionLock.withLock {
+            guard let python = WirelessCapture.pythonPath else {
+                Log.shared.log("wireless helper: no python interpreter found; using CLI capture")
+                return nil
+            }
+            guard let helper = WirelessCapture.screenshotHelperPath else {
+                Log.shared.log("wireless helper: script not found; using CLI capture")
+                return nil
+            }
+            if helperSession == nil || helperPythonPath != python {
+                helperSession?.shutdown()
+                helperSession = WirelessScreenshotSession(pythonPath: python, helperPath: helper)
+                helperPythonPath = python
+            }
+            return helperSession
         }
-        guard let helper = WirelessCapture.screenshotHelperPath else {
-            Log.shared.log("wireless helper: script not found; using CLI capture")
-            return nil
+    }
+
+    func resetHelper() {
+        sessionLock.withLock {
+            helperSession?.shutdown()
+            helperSession = nil
+            helperPythonPath = nil
         }
-        return WirelessScreenshotSession(pythonPath: python, helperPath: helper)
-    }()
+    }
 
     private let nameCacheLock = NSLock()
     private var nameCache: [String: String] = [:]
@@ -248,6 +268,7 @@ final class WirelessCapture: CaptureBackend {
                 Log.shared.log("wireless: helper screenshot \(deviceID)")
                 return png
             } catch {
+                if error.localizedDescription.hasPrefix("Wi-Fi engine") { throw error }
                 Log.shared.log("wireless: helper failed (\(error.localizedDescription)), using CLI")
             }
         }

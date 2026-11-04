@@ -49,6 +49,24 @@ final class WirelessScreenshotSessionTests: XCTestCase {
         }
     }
 
+    func testShutdownStartsFreshHelperAfterRepair() async throws {
+        let session = try session(helper: """
+        result=new
+        while read command udid; do
+          printf 'P\\000\\000\\000\\003%s' "$result"
+          result=old
+        done
+        """)
+        let first = try await session.capture(deviceID: "phone")
+        let second = try await session.capture(deviceID: "phone")
+        session.shutdown()
+        let repaired = try await session.capture(deviceID: "phone")
+        XCTAssertEqual(String(decoding: first, as: UTF8.self), "new")
+        XCTAssertEqual(String(decoding: second, as: UTF8.self), "old")
+        XCTAssertEqual(String(decoding: repaired, as: UTF8.self), "new")
+        session.shutdown()
+    }
+
     func testStartsNewHelperAfterOneDies() async throws {
         // The first helper exits without replying; any later one answers.
         let marker = helperURL.appendingPathExtension("started")

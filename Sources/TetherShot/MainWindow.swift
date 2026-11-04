@@ -208,14 +208,14 @@ private struct ConnectionsDashboardSection: View {
                 SettingRow(
                     icon: "wifi",
                     title: "iPhone Wi-Fi",
-                    detail: model.wirelessReady ? "Developer-services tunnel is ready" : "One-time wireless setup required"
+                    detail: model.wirelessReady ? "Tunnel service installed; repair if capture fails" : "One-time wireless setup required"
                 ) {
                     if model.wirelessReady {
                         ReadyLabel()
-                    } else {
-                        Button("Set Up…", action: model.setupWireless)
-                            .controlSize(.small)
                     }
+                    Button(model.wirelessReady ? "Repair…" : "Set Up…", action: model.setupWireless)
+                        .controlSize(.small)
+                        .disabled(model.isSettingUpWireless)
                 }
                 Divider().padding(.leading, 48)
                 SettingRow(

@@ -79,6 +79,11 @@ final class WirelessScreenshotSession: @unchecked Sendable {
         }
     }
 
+    /// Stop the old interpreter before/after the installer changes the engine.
+    func shutdown() {
+        queue.async { self.stop() }
+    }
+
     /// Runs on `queue`. The watchdog terminates a stuck helper, which unblocks
     /// the pending read with EOF.
     private func send(_ command: String, _ deviceID: String, timeout: TimeInterval) -> Result<Data, Error> {

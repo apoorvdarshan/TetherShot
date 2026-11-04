@@ -45,7 +45,12 @@ swift build            # quick compile check
 open .build/TetherShot.app  # run it
 ```
 
-For wireless work you'll also need `pip3 install -U pymobiledevice3` and a paired iPhone with Developer Mode enabled (see the README's Wireless setup).
+For wireless work, run `bash scripts/install-tunneld.sh` with a paired iPhone
+and Developer Mode enabled (see the README's Wireless setup). This installs the
+version pinned in `scripts/requirements-wireless.txt` in an isolated environment;
+do not replace a shared system Python installation. The install-time pairing
+helper preserves existing credentials and keeps private migration backups outside
+the repository.
 
 ### Editing the website
 

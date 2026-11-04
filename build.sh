@@ -28,7 +28,8 @@ cp Resources/Info.plist "${APP}/Contents/Info.plist"
 
 # Bundle the wireless setup scripts so the menu's "Set Up Wi-Fi Capture…" works,
 # plus the helper that keeps Wi-Fi capture connections warm.
-cp scripts/install-tunneld.sh scripts/uninstall-tunneld.sh scripts/wireless-screenshot.py "${APP}/Contents/Resources/"
+cp scripts/install-tunneld.sh scripts/uninstall-tunneld.sh scripts/wireless-screenshot.py \
+    scripts/wireless-setup.py scripts/requirements-wireless.txt "${APP}/Contents/Resources/"
 chmod +x "${APP}/Contents/Resources/"*.sh "${APP}/Contents/Resources/"*.py
 
 # Generate the app icon from Resources/AppIcon.png (stock tools only: sips +

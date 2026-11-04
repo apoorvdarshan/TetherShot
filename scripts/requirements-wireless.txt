@@ -1,0 +1,2 @@
+# Includes the iOS 27.2 RSD identity fix and Wi-Fi pairing migration support.
+pymobiledevice3==11.49.5

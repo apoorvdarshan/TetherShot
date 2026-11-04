@@ -30,8 +30,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+from importlib import metadata
 import json
 import os
+from pathlib import Path
+import re
 import select
 import struct
 import sys
@@ -52,6 +55,20 @@ _EMPTY_EXIT_AFTER = 30
 _IDLE_POLL = 5
 
 
+def require_supported_engine() -> None:
+    requirement = Path(__file__).with_name("requirements-wireless.txt").read_text()
+    minimum = re.search(r"^pymobiledevice3==(\d+)\.(\d+)\.(\d+)$", requirement, re.MULTILINE)
+    if minimum is None:
+        raise RuntimeError("Wi-Fi engine requirement is missing. Reinstall TetherShot.")
+    try:
+        installed = metadata.version("pymobiledevice3")
+    except metadata.PackageNotFoundError:
+        installed = "0.0.0"
+    numbers = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", installed)
+    if numbers is None or tuple(map(int, numbers.groups())) < tuple(map(int, minimum.groups())):
+        raise RuntimeError("Wi-Fi engine is outdated. Run iPhone Wi-Fi Repair in TetherShot's Connections settings.")
+
+
 class Session:
     def __init__(self, address: tuple[str, int]) -> None:
         self.address = address
@@ -59,6 +76,7 @@ class Session:
         self.screenshot: Screenshot | None = None
 
     async def open(self) -> None:
+        require_supported_engine()
         from pymobiledevice3.remote.remote_service_discovery import RemoteServiceDiscoveryService
         from pymobiledevice3.services.dvt.instruments.dvt_provider import DvtProvider
         from pymobiledevice3.services.dvt.instruments.screenshot import Screenshot

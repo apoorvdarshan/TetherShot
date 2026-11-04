@@ -1,0 +1,18 @@
+name: macOS tests
+on:
+  pull_request:
+    paths: ['Sources/**', 'Tests/**', 'Package.swift', '.github/workflows/macos-tests.yml']
+  push:
+    branches: [main]
+    paths: ['Sources/**', 'Tests/**', 'Package.swift', '.github/workflows/macos-tests.yml']
+permissions:
+  contents: read
+concurrency:
+  group: macos-tests-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
