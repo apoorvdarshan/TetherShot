@@ -133,7 +133,13 @@ Open TetherShot from Applications or Spotlight, or click its menu-bar icon, then
 
 ## Wireless (Wi-Fi) setup — one time
 
-Wi-Fi capture uses a root LaunchDaemon (`tunneld`) that keeps a RemoteXPC tunnel alive so captures need no sudo.
+With **pymobiledevice3 11 or newer**, Wi-Fi capture rides the tunnel macOS already keeps to paired iPhones (the one Xcode uses for wireless debugging), so no daemon or admin password is needed:
+
+```bash
+pip3 install -U pymobiledevice3            # the engine (11+)
+```
+
+Older pymobiledevice3 needs a root LaunchDaemon (`tunneld`) that keeps a RemoteXPC tunnel alive. With 11+ it is optional and only used as a fallback, so it is worth keeping if macOS's tunnel can't reach your phone:
 
 ```bash
 tethershot setup-wifi  # installs/repairs the engine and tunnel (admin approval)
@@ -160,7 +166,7 @@ connect the affected phone by USB if setup asks. Older engines can discover an
 iOS 27.2 phone while its screenshot service refuses connections; Repair updates
 both the engine and pairing instead of repeatedly restarting the app.
 
-After that you can unplug. While the iPhone and Mac share a Wi-Fi network, the menu shows it as **(Wi-Fi)** and `tunneld` discovers it automatically. Remove the daemon with `bash scripts/uninstall-tunneld.sh`.
+After that you can unplug. While the iPhone and Mac share a Wi-Fi network, the menu shows it as **(Wi-Fi)** and it is discovered automatically. Remove the daemon with `bash scripts/uninstall-tunneld.sh`.
 
 > **Why not AirPlay mirroring?** On macOS Tahoe, a mirrored iPhone window blacks out whenever a capture context is active — so TetherShot uses the developer-services path instead, capturing the device's own framebuffer regardless of transport.
 
@@ -180,7 +186,7 @@ tethershot version    # print the installed version
 | Component | Role |
 |---|---|
 | `USBCapture` | Flips the CoreMediaIO screen-capture flag, finds the iPhone as a `.muxed` device, grabs one frame → PNG |
-| `WirelessCapture` | Talks to the `tunneld` HTTP API, runs `pymobiledevice3 developer dvt screenshot` over the Wi-Fi tunnel |
+| `WirelessCapture` | Captures over Wi-Fi through `scripts/wireless-screenshot.py`: macOS's own tunnel first (pymobiledevice3 11+), the `tunneld` HTTP API as fallback |
 | `AndroidCapture` | Uses ADB device discovery, stable Android IDs, and native `screencap` PNG transfer |
 | `Updater` | Checks GitHub Releases, verifies the asset digest and Developer ID signature, then atomically replaces and relaunches the current app |
 | `AppModel` | Main-actor state: device list, destination folder, options, status |
