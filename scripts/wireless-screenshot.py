@@ -60,8 +60,17 @@ import urllib.request
 
 _TUNNELD_URL = "http://127.0.0.1:49151/"
 _CONNECT_TIMEOUT = 6
-_REUSED_CAPTURE_TIMEOUT = 3
-_FRESH_CAPTURE_TIMEOUT = 6
+# A screenshot is 0.1 to 13 MB depending on what is on screen, and slow Wi-Fi
+# moves about 1 MB a second, so the transfer itself gets a generous limit. A
+# dead connection is caught sooner by the probe sent alongside it.
+#
+# The app's watchdog (75 s) must outlast the longest request: a capture whose
+# tunneld connection answers the probe, breaks late in the transfer, and then
+# finds Apple's tunnel unreachable. That is a close left over from the
+# interrupted refresh, a tunnel lookup (2), _PROBE_TIMEOUT, _CAPTURE_TIMEOUT,
+# a close, _NATIVE_CONNECT_TIMEOUT, a close, a second lookup, _CONNECT_TIMEOUT
+# and _CAPTURE_TIMEOUT again: about 66 s.
+_CAPTURE_TIMEOUT = 20
 _CLOSE_TIMEOUT = 1.5
 # How long to keep running with no devices to keep warm before exiting, and how
 # long a device's tunnel may stay missing before it is forgotten. The client
@@ -71,8 +80,7 @@ _EMPTY_EXIT_AFTER = 30
 # it should exit.
 _IDLE_POLL = 5
 # Opening Apple's tunnel takes about 2 s (XPC to remotepairingd plus a nettop
-# sample to find the RSD port). Kept so a stale reuse, this, a tunneld attempt
-# and a fresh capture still fit the app's 30 s watchdog.
+# sample to find the RSD port).
 _NATIVE_CONNECT_TIMEOUT = 8
 # Background retries for a phone Apple's tunnel can't reach start this far
 # apart and double up to the max, so an absent phone costs almost nothing.
@@ -139,22 +147,18 @@ class Session:
         self.udid = udid
         self._stack = contextlib.AsyncExitStack()
         self.screenshot: Screenshot | None = None
-        self._dvt = None
         self._device_info = None
         # Loop time this connection was last known to work.
         self.checked_at = float("-inf")
 
     async def probe(self) -> None:
         """Cheap liveness check: a few bytes over the open DVT connection."""
-        if self._device_info is None:
-            from pymobiledevice3.services.dvt.instruments.device_info import DeviceInfo
-
-            self._device_info = await self._stack.enter_async_context(DeviceInfo(self._dvt))
         await self._device_info.mach_time_info()
 
     async def open(self) -> None:
         require_supported_engine()
         from pymobiledevice3.remote.remote_service_discovery import RemoteServiceDiscoveryService
+        from pymobiledevice3.services.dvt.instruments.device_info import DeviceInfo
         from pymobiledevice3.services.dvt.instruments.dvt_provider import DvtProvider
         from pymobiledevice3.services.dvt.instruments.screenshot import Screenshot
 
@@ -166,8 +170,11 @@ class Session:
         else:
             rsd = await self._stack.enter_async_context(RemoteServiceDiscoveryService(self.address))
         dvt = await self._stack.enter_async_context(DvtProvider(rsd))
-        self._dvt = dvt
         self.screenshot = await self._stack.enter_async_context(Screenshot(dvt))
+        # Opened here so a probe is always one request. One sent alongside a
+        # screenshot request must be answered before the screenshot starts
+        # arriving: the device answers nothing else during that transfer.
+        self._device_info = await self._stack.enter_async_context(DeviceInfo(dvt))
 
     async def close(self) -> None:
         async def cleanup():
@@ -243,7 +250,7 @@ class Server:
         """Drops connections that died while idle so refresh can replace them.
 
         Without this a dead connection is only found by the next capture,
-        which then waits out _REUSED_CAPTURE_TIMEOUT before reconnecting.
+        which then waits out _PROBE_TIMEOUT before reconnecting.
         """
         now = asyncio.get_running_loop().time()
         wall = time.time()
@@ -443,11 +450,14 @@ class Server:
         session, reused = await self.session(udid)
         if reused:
             try:
-                png = await asyncio.wait_for(
-                    session.screenshot.get_screenshot(), _REUSED_CAPTURE_TIMEOUT
-                )
+                png = await self.capture_reused(session)
                 self.log_shot(session)
                 return png
+            except asyncio.TimeoutError:
+                # The probe answered, so the connection works and the transfer
+                # is too slow. A new connection would be just as slow.
+                await self.drop(udid)
+                raise
             except Exception:
                 # The phone may have slept or dropped the channel without the
                 # tunnel moving, or remoted evicted our RSD connection on
@@ -456,12 +466,43 @@ class Server:
                 session, _ = await self.session(udid)
         try:
             png = await asyncio.wait_for(
-                session.screenshot.get_screenshot(), _FRESH_CAPTURE_TIMEOUT
+                session.screenshot.get_screenshot(), _CAPTURE_TIMEOUT
             )
         except BaseException:
             await self.drop(udid)
             raise
         self.log_shot(session)
+        return png
+
+    @staticmethod
+    async def capture_reused(session: Session) -> bytes:
+        """Takes a screenshot over a connection that may have died while idle.
+
+        A probe is sent alongside the screenshot request. Its answer is a few
+        bytes, so it tells a dead connection, which is given up on after
+        _PROBE_TIMEOUT, from a large screenshot still arriving over slow
+        Wi-Fi, which is waited for. Only the second raises TimeoutError.
+        """
+        # The probe goes first so its answer is ahead of the screenshot's.
+        probe = asyncio.ensure_future(session.probe())
+        shot = asyncio.ensure_future(session.screenshot.get_screenshot())
+        try:
+            await asyncio.wait({shot, probe}, timeout=_PROBE_TIMEOUT,
+                               return_when=asyncio.FIRST_COMPLETED)
+            if not shot.done():
+                if not probe.done():
+                    raise ConnectionError("no answer from the device")
+                probe.result()
+            png = await asyncio.wait_for(shot, _CAPTURE_TIMEOUT)
+        except BaseException:
+            # The caller closes this session, so nothing is left half-done on it.
+            for task in (shot, probe):
+                task.cancel()
+            await asyncio.gather(shot, probe, return_exceptions=True)
+            raise
+        # A probe still in flight is left to finish: the session stays in use,
+        # and cancelling a request mid-flight leaves its reply unclaimed.
+        probe.add_done_callback(lambda task: task.cancelled() or task.exception())
         return png
 
     @staticmethod

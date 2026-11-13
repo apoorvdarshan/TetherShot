@@ -10,9 +10,10 @@ import Foundation
 ///
 /// Forgetting a device clears the helper's reconnect state with a close request.
 final class WirelessScreenshotSession: @unchecked Sendable {
-    /// Covers a warm, which can include a reconnect, and a fresh capture. The
-    /// watchdog only fires when the helper is genuinely stuck.
-    private static let requestTimeout: TimeInterval = 30
+    /// Covers a warm, which can include a reconnect, and a fresh capture of a
+    /// large screenshot over slow Wi-Fi. The watchdog only fires when the
+    /// helper is genuinely stuck.
+    private static let requestTimeout: TimeInterval = 75
     /// Listing browses macOS's pairing daemon for 1 s, plus a helper start.
     private static let listTimeout: TimeInterval = 8
 

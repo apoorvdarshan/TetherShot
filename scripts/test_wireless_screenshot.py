@@ -320,6 +320,64 @@ class NativeFallbackTests(unittest.IsolatedAsyncioTestCase):
         await self.server.capture('phone')
         self.assertGreater(session.checked_at, float('-inf'))
 
+    async def test_slow_screenshot_on_a_live_connection_is_waited_for(self):
+        class Slow(FakeSession):
+            async def get_screenshot(self):
+                await asyncio.sleep(0.05)
+                return b'big png'
+        session = Slow(helper.NATIVE, 'phone')
+        self.server.sessions['phone'] = session
+        with patch.object(helper, '_PROBE_TIMEOUT', 0.01):
+            png = await self.server.capture('phone')
+        self.assertEqual(png, b'big png')
+        self.assertFalse(session.closed, 'the probe answered, so the connection is kept')
+
+    async def test_too_slow_screenshot_on_a_live_connection_is_not_retried(self):
+        class Endless(FakeSession):
+            opened = 0
+
+            async def open(self):
+                Endless.opened += 1
+
+            async def get_screenshot(self):
+                await asyncio.sleep(3600)
+        session = Endless(helper.NATIVE, 'phone')
+        self.server.sessions['phone'] = session
+        with patch.object(helper, '_PROBE_TIMEOUT', 0.01), patch.object(helper, '_CAPTURE_TIMEOUT', 0.02), \
+                patch.object(helper, 'Session', Endless):
+            with self.assertRaises(asyncio.TimeoutError):
+                await self.server.capture('phone')
+        self.assertTrue(session.closed)
+        self.assertEqual(Endless.opened, 0, 'a new connection would be just as slow')
+
+    async def test_probe_still_in_flight_after_the_screenshot_is_left_to_finish(self):
+        class SlowProbe(FakeSession):
+            async def probe(self):
+                await asyncio.sleep(0.02)
+                self.probes += 1
+        session = SlowProbe(helper.NATIVE, 'phone')
+        self.server.sessions['phone'] = session
+        await self.server.capture('phone')
+        self.assertEqual(session.probes, 0)
+        await asyncio.sleep(0.05)
+        self.assertEqual(session.probes, 1)
+        self.assertFalse(session.closed)
+
+    async def test_dead_connection_is_replaced_after_the_probe_times_out(self):
+        class Dead(FakeSession):
+            async def probe(self):
+                await asyncio.sleep(3600)
+
+            async def get_screenshot(self):
+                await asyncio.sleep(3600)
+        dead = Dead(helper.NATIVE, 'phone')
+        self.server.sessions['phone'] = dead
+        with patch.object(helper, '_PROBE_TIMEOUT', 0.01):
+            png = await self.server.capture('phone')
+        self.assertEqual(png, b'png')
+        self.assertTrue(dead.closed)
+        self.assertIsNot(self.server.sessions['phone'], dead)
+
     async def test_caps_reports_apple_tunnel_support(self):
         out = io.BytesIO()
         with patch.object(helper, '_read_line_or_timeout', side_effect=[b'caps\n', b'']), \
