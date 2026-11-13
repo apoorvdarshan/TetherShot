@@ -72,7 +72,7 @@ final class AppModel: ObservableObject {
             async let refreshedUSBDevices = discoverUSBDevicesWithStartupRetry(initial: usbDevices)
             async let wirelessDevices = wireless.discoverDevicesAsync()
             async let androidDevices = android.discoverDevicesAsync()
-            wirelessReady = await wireless.isTunneldRunning()
+            wirelessReady = await wireless.isWirelessReady()
             androidReady = AndroidCapture.adbPath != nil
             applyDiscoveredDevices(
                 (await refreshedUSBDevices) + (await wirelessDevices) + (await androidDevices)

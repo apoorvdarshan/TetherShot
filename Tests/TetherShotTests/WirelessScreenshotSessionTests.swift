@@ -186,4 +186,46 @@ final class WirelessScreenshotSessionTests: XCTestCase {
         XCTAssertTrue(commands.contains("close abc\nwarm abc"))
     }
 
+    func testNativeDevicesDecodesHelperList() async throws {
+        let session = try session(helper: """
+        while read command udid; do
+          [ "$command" = list ] && printf 'J\\000\\000\\000\\016{"abc":"Noah"}'
+        done
+        """)
+
+        let devices = await session.nativeDevices()
+
+        XCTAssertEqual(devices, ["abc": "Noah"])
+    }
+
+    func testSupportsNativeTunnelReadsHelperCaps() async throws {
+        let supported = try session(helper: """
+        while read command udid; do
+          [ "$command" = caps ] && printf 'J\\000\\000\\000\\020{"native": true}'
+        done
+        """)
+        let supportsNative = await supported.supportsNativeTunnel()
+        XCTAssertTrue(supportsNative)
+
+        let unsupported = try session(helper: """
+        while read command udid; do
+          printf 'E\\000\\000\\000\\004nope'
+        done
+        """)
+        let fallback = await unsupported.supportsNativeTunnel()
+        XCTAssertFalse(fallback)
+    }
+
+    func testNativeDevicesIsEmptyWhenHelperCannotList() async throws {
+        let session = try session(helper: """
+        while read command udid; do
+          printf 'E\\000\\000\\000\\004nope'
+        done
+        """)
+
+        let devices = await session.nativeDevices()
+
+        XCTAssertEqual(devices, [:])
+    }
+
 }
