@@ -10,6 +10,10 @@ import Foundation
 ///   2. asks the long-lived scripts/wireless-screenshot.py helper for a frame,
 ///      falling back to `developer dvt screenshot OUT --tunnel <UDID>`.
 ///
+/// With pymobiledevice3 11+ the helper captures through macOS's own tunnel
+/// first and tunneld becomes optional: phones tunneld doesn't list (or all
+/// phones, when tunneld isn't installed) come from `nativeOnlyDevices()`.
+///
 /// Because tunneld holds the tunnel, the capture command runs as a normal user
 /// with no sudo — and works whether the phone is on USB or pure Wi-Fi.
 final class WirelessCapture: CaptureBackend {
@@ -157,6 +161,23 @@ final class WirelessCapture: CaptureBackend {
         await tunneldDevices() != nil
     }
 
+    private let nativeSupportLock = NSLock()
+    private var nativeSupported = false
+
+    /// Wi-Fi capture works through macOS's own tunnel (pymobiledevice3 11+)
+    /// even with no tunneld, so either one counts as set up.
+    func isWirelessReady() async -> Bool {
+        if await supportsNativeTunnel() { return true }
+        return await isTunneldRunning()
+    }
+
+    private func supportsNativeTunnel() async -> Bool {
+        if nativeSupportLock.withLock({ nativeSupported }) { return true }
+        guard let session, await session.supportsNativeTunnel() else { return false }
+        nativeSupportLock.withLock { nativeSupported = true }
+        return true
+    }
+
     /// Raw tunneld view: UDID -> list of tunnel interface names. nil if tunneld
     /// isn't reachable at all.
     private func tunneldDevices() async -> [String: [String]]? {
@@ -187,7 +208,10 @@ final class WirelessCapture: CaptureBackend {
     /// Known UDIDs are still refreshed in the background so a phone renamed
     /// while the app runs doesn't keep showing its old name.
     func discoverDevicesAsync(refreshNames: Bool = true) async -> [CaptureDevice] {
-        guard let tunnels = await tunneldDevices() else { return [] }
+        let tunnels = await tunneldDevices() ?? [:]
+        guard tunnels.contains(where: { !$0.value.isEmpty }) else {
+            return await nativeOnlyDevices()
+        }
         let tunneledDeviceIDs = tunnels.filter { !$0.value.isEmpty }.map(\.key)
         let cached = cachedNames()
         let needsLookup = refreshNames || tunnels.keys.contains { cached[$0] == nil }
@@ -209,6 +233,30 @@ final class WirelessCapture: CaptureBackend {
             ))
         }
         return devices
+    }
+
+    /// tunneld finds Wi-Fi phones only from Bonjour announcements, and a locked
+    /// phone on a busy network can stop sending them; then tunneld lists
+    /// nothing until the phone is plugged in. macOS's own pairing daemon still
+    /// reaches it, and the helper can capture through Apple's tunnel, so offer
+    /// those phones instead of reporting none. Only asked when tunneld has no
+    /// phones, so it never adds latency while tunneld is working.
+    private func nativeOnlyDevices() async -> [CaptureDevice] {
+        guard let session else { return [] }
+        let native = await session.nativeDevices()
+        guard !native.isEmpty else { return [] }
+        let names = nameCacheLock.withLock {
+            nameCache.merge(native.filter { !$0.value.isEmpty }) { _, latest in latest }
+            return nameCache
+        }
+        return native.keys.sorted().map { udid in
+            CaptureDevice(
+                id: DeviceIdentity.iOS(rawID: udid),
+                captureID: udid,
+                name: names[udid] ?? "iPhone …\(udid.suffix(5))",
+                connection: .wireless
+            )
+        }
     }
 
     /// Re-resolves device names off the capture path, at most once every few
@@ -283,10 +331,13 @@ final class WirelessCapture: CaptureBackend {
             .appendingPathComponent("tethershot-\(UUID().uuidString).png")
         defer { try? FileManager.default.removeItem(at: out) }
 
-        Log.shared.log("wireless: dvt screenshot --tunnel \(deviceID)")
+        // Without tunneld, let pymobiledevice3 11+ pick its own transport
+        // (which includes macOS's tunnel) for this device.
+        let transport = await isTunneldRunning() ? ["--tunnel", deviceID] : ["--udid", deviceID]
+        Log.shared.log("wireless: dvt screenshot \(transport.joined(separator: " "))")
         let result = await Proc.run(
             pmd3,
-            ["developer", "dvt", "screenshot", out.path, "--tunnel", deviceID],
+            ["developer", "dvt", "screenshot", out.path] + transport,
             timeout: 40
         )
         guard result.status == 0, FileManager.default.fileExists(atPath: out.path) else {

@@ -10,9 +10,12 @@ import Foundation
 ///
 /// Forgetting a device clears the helper's reconnect state with a close request.
 final class WirelessScreenshotSession: @unchecked Sendable {
-    /// Covers a warm, which can include a reconnect, and a fresh capture. The
-    /// watchdog only fires when the helper is genuinely stuck.
-    private static let requestTimeout: TimeInterval = 30
+    /// Covers a warm, which can include a reconnect, and a fresh capture of a
+    /// large screenshot over slow Wi-Fi. The watchdog only fires when the
+    /// helper is genuinely stuck.
+    private static let requestTimeout: TimeInterval = 75
+    /// Listing browses macOS's pairing daemon for 1 s, plus a helper start.
+    private static let listTimeout: TimeInterval = 8
 
     private let pythonPath: String
     private let helperPath: String
@@ -84,6 +87,37 @@ final class WirelessScreenshotSession: @unchecked Sendable {
         queue.async { self.stop() }
     }
 
+    /// True when the helper can use macOS's own tunnel (pymobiledevice3 11+),
+    /// so Wi-Fi capture works without tunneld.
+    func supportsNativeTunnel() async -> Bool {
+        let result = await withCheckedContinuation { continuation in
+            queue.async {
+                continuation.resume(returning: self.send("caps", "", timeout: Self.listTimeout))
+            }
+        }
+        guard case .success(let payload) = result,
+              let caps = try? JSONSerialization.jsonObject(with: payload) as? [String: Bool] else {
+            return false
+        }
+        return caps["native"] == true
+    }
+
+    /// UDID -> name for phones macOS's own pairing daemon can reach, which the
+    /// helper can capture through Apple's tunnel when tunneld has lost them.
+    /// Empty when that path is unavailable (pymobiledevice3 older than 11).
+    func nativeDevices() async -> [String: String] {
+        let result = await withCheckedContinuation { continuation in
+            queue.async {
+                continuation.resume(returning: self.send("list", "", timeout: Self.listTimeout))
+            }
+        }
+        guard case .success(let payload) = result,
+              let devices = try? JSONSerialization.jsonObject(with: payload) as? [String: String] else {
+            return [:]
+        }
+        return devices
+    }
+
     /// Runs on `queue`. The watchdog terminates a stuck helper, which unblocks
     /// the pending read with EOF.
     private func send(_ command: String, _ deviceID: String, timeout: TimeInterval) -> Result<Data, Error> {
@@ -98,7 +132,7 @@ final class WirelessScreenshotSession: @unchecked Sendable {
             let length = header.dropFirst().reduce(0) { $0 << 8 | Int($1) }
             let payload = try read(length, from: output)
             switch header.first {
-            case UInt8(ascii: "P"), UInt8(ascii: "K"):
+            case UInt8(ascii: "P"), UInt8(ascii: "K"), UInt8(ascii: "J"):
                 return .success(payload)
             case UInt8(ascii: "E"):
                 return .failure(CaptureError.other(String(decoding: payload, as: UTF8.self)))
