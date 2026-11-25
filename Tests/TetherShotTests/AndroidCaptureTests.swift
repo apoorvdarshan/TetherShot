@@ -60,8 +60,8 @@ final class AndroidCaptureTests: XCTestCase {
         )]
 
         XCTAssertEqual(
-            AndroidDeviceParser.preferredSerial(requested: requested, candidates: candidates),
-            current
+            AndroidDeviceParser.matchingSerials(requested: requested, candidates: candidates),
+            [current]
         )
         XCTAssertEqual(
             AndroidDeviceParser.stableSerial(requested),
@@ -69,4 +69,60 @@ final class AndroidCaptureTests: XCTestCase {
         )
     }
 
+    func testDuplicateBonjourRoutesPreferResponsiveAliasAndKeepOtherPhonesSeparate() {
+        let first = "adb-LAVA1-guid._adb-tls-connect._tcp"
+        let second = "adb-LAVA1-guid (2)._adb-tls-connect._tcp"
+        let other = "adb-LAVA2-guid._adb-tls-connect._tcp"
+        let devices = CaptureDeviceMerger.merge(AndroidDeviceParser.reconcile([
+            route(first),
+            route(second, androidID: "AB12\n"),
+            route(other),
+        ]))
+
+        XCTAssertEqual(devices.count, 2)
+        XCTAssertEqual(devices.first?.id, "android:ab12")
+        XCTAssertEqual(devices.first?.captureID, second)
+        XCTAssertTrue(devices.contains { $0.captureID == other })
+    }
+
+    func testUnresponsiveAliasesRemainOneDeviceAndRetryListStartsWithRequestedRoute() {
+        let first = "adb-LAVA1-guid._adb-tls-connect._tcp"
+        let second = "adb-LAVA1-guid (2)._adb-tls-connect._tcp"
+        let third = "adb-LAVA1-guid (3)._adb-tls-connect._tcp"
+        let other = "adb-LAVA2-guid._adb-tls-connect._tcp"
+        let routes = [route(second), route(first), route(other), route(third)]
+
+        XCTAssertEqual(CaptureDeviceMerger.merge(AndroidDeviceParser.reconcile(routes)).count, 2)
+        XCTAssertEqual(
+            AndroidDeviceParser.matchingSerials(requested: first, candidates: routes.map(\.device)),
+            [first, second, third]
+        )
+    }
+
+    func testCachedIdentitySurvivesTimeoutButIsNeverReusedForAnIPAddress() async {
+        let cache = AndroidRouteIdentityCache()
+        let first = "adb-LAVA1-guid._adb-tls-connect._tcp"
+        let second = "adb-LAVA1-guid (2)._adb-tls-connect._tcp"
+        let address = "192.168.1.10:36115"
+        _ = await cache.reconcile([route(first, androidID: "ab12"), route(address, androidID: "ab12")])
+        let refreshed = await cache.reconcile([route(second), route(address)])
+
+        XCTAssertEqual(refreshed[0].id, "android:ab12")
+        XCTAssertEqual(refreshed[1].id, "android-adb:\(address)")
+    }
+
+    func testConflictingVerifiedIdentitiesAreNotMerged() {
+        let first = "adb-LAVA1-guid._adb-tls-connect._tcp"
+        let second = "adb-LAVA1-guid (2)._adb-tls-connect._tcp"
+        let devices = CaptureDeviceMerger.merge(AndroidDeviceParser.reconcile([
+            route(first, androidID: "ab12"),
+            route(second, androidID: "ab34"),
+        ]))
+
+        XCTAssertEqual(devices.map(\.id), ["android:ab12", "android:ab34"])
+    }
+
+    private func route(_ serial: String, androidID: String? = nil) -> AndroidDeviceParser.Route {
+        .init(device: CaptureDevice(id: serial, name: "LAVA LZG411", connection: .androidWireless), androidID: androidID)
+    }
 }
