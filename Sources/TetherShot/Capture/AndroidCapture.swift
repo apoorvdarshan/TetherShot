@@ -4,6 +4,8 @@ import Foundation
 /// Bridge. Users enable USB debugging once; screenshots remain local and are
 /// transferred as PNG files without installing anything on the phone.
 final class AndroidCapture: CaptureBackend {
+    private let routeIdentities = AndroidRouteIdentityCache()
+
     static let adbPath: String? = {
         let candidates = [
             "/opt/homebrew/bin/adb",
@@ -19,7 +21,7 @@ final class AndroidCapture: CaptureBackend {
         guard let adb = Self.adbPath else { return [] }
         let result = await Proc.run(adb, ["devices", "-l"], timeout: 8)
         guard result.status == 0 else { return [] }
-        var devices: [CaptureDevice] = []
+        var routes: [AndroidDeviceParser.Route] = []
         for parsed in AndroidDeviceParser.parse(result.stdout) {
             async let kernelQEMUResult = Proc.run(
                 adb,
@@ -41,14 +43,9 @@ final class AndroidCapture: CaptureBackend {
                 bootQEMU: (await bootQEMUResult).stdout
             ) else { continue }
             let androidID = identityResult.status == 0 ? identityResult.stdout : nil
-            devices.append(CaptureDevice(
-                id: DeviceIdentity.android(androidID: androidID, adbSerial: parsed.captureID),
-                captureID: parsed.captureID,
-                name: parsed.name,
-                connection: parsed.connection
-            ))
+            routes.append(.init(device: parsed, androidID: androidID))
         }
-        return devices
+        return await routeIdentities.reconcile(routes)
     }
 
     func capture(deviceID: String) async throws -> Data {
@@ -66,11 +63,39 @@ final class AndroidCapture: CaptureBackend {
             throw CaptureError.other("Android platform tools are not installed.")
         }
 
-        let deviceID = try await currentCaptureID(for: device, adbPath: adb)
-        Log.shared.log("android: direct screencap \(deviceID)")
+        let candidates = try await currentDevices(adbPath: adb)
+        let aliases = AndroidDeviceParser.matchingSerials(requested: device.captureID, candidates: candidates)
+        var lastError: CaptureError?
+        for serial in aliases {
+            do { return try await screenshot(adb: adb, serial: serial) }
+            catch let error as CaptureError { lastError = error }
+        }
+
+        // A USB handle, manually connected address, or renamed Bonjour service
+        // may also belong to this phone. Never fall back to another phone by model.
+        if device.id.hasPrefix("android:") {
+            let attempted = Set(aliases)
+            for candidate in candidates where !attempted.contains(candidate.captureID) {
+                let identity = await Proc.run(
+                    adb,
+                    ["-s", candidate.captureID, "shell", "settings", "get", "secure", "android_id"],
+                    timeout: 5
+                )
+                guard identity.status == 0,
+                      DeviceIdentity.android(androidID: identity.stdout, adbSerial: candidate.captureID) == device.id
+                else { continue }
+                do { return try await screenshot(adb: adb, serial: candidate.captureID) }
+                catch let error as CaptureError { lastError = error }
+            }
+        }
+        throw lastError ?? CaptureError.other("Android device disconnected. Reconnect USB or Wi-Fi; TetherShot will retry.")
+    }
+
+    private func screenshot(adb: String, serial: String) async throws -> Data {
+        Log.shared.log("android: direct screencap \(serial)")
         let shot = await Proc.runData(
             adb,
-            ["-s", deviceID, "exec-out", "screencap", "-p"],
+            ["-s", serial, "exec-out", "screencap", "-p"],
             timeout: 8
         )
         guard shot.status == 0, shot.stdout.starts(with: [0x89, 0x50, 0x4E, 0x47]) else {
@@ -79,7 +104,7 @@ final class AndroidCapture: CaptureBackend {
         return shot.stdout
     }
 
-    private func currentCaptureID(for device: CaptureDevice, adbPath: String) async throws -> String {
+    private func currentDevices(adbPath: String) async throws -> [CaptureDevice] {
         let result = await Proc.run(adbPath, ["devices", "-l"], timeout: 8)
         guard result.status == 0 else {
             throw CaptureError.other(Self.message(
@@ -88,35 +113,7 @@ final class AndroidCapture: CaptureBackend {
             ))
         }
 
-        let candidates = AndroidDeviceParser.parse(result.stdout)
-        if let serial = AndroidDeviceParser.preferredSerial(
-            requested: device.captureID,
-            candidates: candidates
-        ) {
-            return serial
-        }
-
-        // The mDNS service instance can change beyond its Bonjour conflict
-        // suffix. Fall back to Android's persistent hardware identity so a
-        // renamed/re-advertised phone resumes without becoming a new device.
-        if device.id.hasPrefix("android:") {
-            for candidate in candidates {
-                let identity = await Proc.run(
-                    adbPath,
-                    ["-s", candidate.captureID, "shell", "settings", "get", "secure", "android_id"],
-                    timeout: 5
-                )
-                guard identity.status == 0 else { continue }
-                if DeviceIdentity.android(
-                    androidID: identity.stdout,
-                    adbSerial: candidate.captureID
-                ) == device.id {
-                    return candidate.captureID
-                }
-            }
-        }
-
-        throw CaptureError.other("Android device disconnected. Reconnect USB or Wi-Fi; TetherShot will retry.")
+        return AndroidDeviceParser.parse(result.stdout)
     }
 
     private static func message(from text: String, fallback: String) -> String {
@@ -131,7 +128,58 @@ final class AndroidCapture: CaptureBackend {
     }
 }
 
+/// Remember verified Bonjour identities while the app runs so transient shell
+/// timeouts don't turn a saved hotkey or hidden device into a different device.
+actor AndroidRouteIdentityCache {
+    private var knownIDs: [String: String] = [:]
+
+    func reconcile(_ routes: [AndroidDeviceParser.Route]) -> [CaptureDevice] {
+        let wifiGroups = Dictionary(grouping: routes.filter {
+            AndroidDeviceParser.isBonjourSerial($0.device.captureID)
+        }) { AndroidDeviceParser.stableSerial($0.device.captureID) }
+        for (serial, group) in wifiGroups {
+            let ids = Set(group.compactMap(\.verifiedID))
+            if ids.count == 1, let id = ids.first {
+                knownIDs[serial] = id
+            } else if ids.count > 1 {
+                knownIDs.removeValue(forKey: serial)
+            }
+        }
+        return AndroidDeviceParser.reconcile(routes, knownBonjourIDs: knownIDs)
+    }
+}
+
 enum AndroidDeviceParser {
+    struct Route {
+        let device: CaptureDevice
+        let androidID: String?
+
+        var verifiedID: String? {
+            let id = DeviceIdentity.android(androidID: androidID, adbSerial: device.captureID)
+            return id.hasPrefix("android:") ? id : nil
+        }
+    }
+
+    /// Bonjour may advertise `adb-…` and `adb-… (2)` for the same phone. Share
+    /// a verified Android ID across aliases even if one shell did not answer.
+    /// Do not equate unrelated endpoints just because they share a model name.
+    static func reconcile(_ routes: [Route], knownBonjourIDs: [String: String] = [:]) -> [CaptureDevice] {
+        let groups = Dictionary(grouping: routes) { stableSerial($0.device.captureID) }
+        // Equal-ranked Wi-Fi routes keep discovery order in CaptureDeviceMerger,
+        // so put responsive, verified endpoints before unanswered aliases.
+        let ordered = routes.filter { $0.verifiedID != nil } + routes.filter { $0.verifiedID == nil }
+        return ordered.map { route in
+            let device = route.device
+            let stable = stableSerial(device.captureID)
+            let groupIDs = Set(groups[stable, default: []].compactMap(\.verifiedID))
+            let id = route.verifiedID
+                ?? (groupIDs.count == 1 ? groupIDs.first : nil)
+                ?? (groupIDs.isEmpty && isBonjourSerial(stable) ? knownBonjourIDs[stable] : nil)
+                ?? DeviceIdentity.android(androidID: nil, adbSerial: stable)
+            return CaptureDevice(id: id, captureID: device.captureID, name: device.name, connection: device.connection)
+        }
+    }
+
     static func parse(_ output: String) -> [CaptureDevice] {
         output
             .split(whereSeparator: \.isNewline)
@@ -165,14 +213,13 @@ enum AndroidDeviceParser {
         }
     }
 
-    static func preferredSerial(
+    static func matchingSerials(
         requested: String,
         candidates: [CaptureDevice]
-    ) -> String? {
-        if candidates.contains(where: { $0.captureID == requested }) { return requested }
+    ) -> [String] {
         let stableRequested = stableSerial(requested)
-        let matches = candidates.filter { stableSerial($0.captureID) == stableRequested }
-        return matches.count == 1 ? matches[0].captureID : nil
+        let matches = candidates.map(\.captureID).filter { stableSerial($0) == stableRequested }
+        return matches.filter { $0 == requested } + matches.filter { $0 != requested }
     }
 
     static func stableSerial(_ serial: String) -> String {
@@ -184,7 +231,11 @@ enum AndroidDeviceParser {
     }
 
     static func isWireless(serial: String) -> Bool {
-        serial.contains(":") || serial.localizedCaseInsensitiveContains("._adb-tls-connect._tcp")
+        serial.contains(":") || isBonjourSerial(serial)
+    }
+
+    static func isBonjourSerial(_ serial: String) -> Bool {
+        serial.lowercased().hasSuffix("._adb-tls-connect._tcp")
     }
 
     private static func isEmulator(serial: String, fields: [String]) -> Bool {
